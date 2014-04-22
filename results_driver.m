@@ -8,4 +8,5 @@ trainingPermu = resultsPermu(1:40);
 testingPermu = resultsPermu(41:50);
 res = Results(labelledData);
 res.addNewResults(length(trainingResults),trainingResults, trainingPermu, testingResults, testingPermu);
+res.saveData('./','data.txt');
 

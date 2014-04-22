@@ -8,7 +8,6 @@ classdef Results
         TestAccuracies
         TrainingDataSizes
         LabelledAnswers
-       
         count;
     end
     methods
@@ -31,6 +30,14 @@ classdef Results
         end
         function pErrors=calcPercentError(obj,results,realThing)
             pErrors = (results - realThing)./realThing;  %dot does elementwise division
+        end
+        function saveData(obj,directory,name)
+            file = fopen([directory name],'w');
+            fprintf(file,'Accuracies Data\n');
+            fprintf(file,'Size of Training Training Accuracies Testing Accuracies \n');
+            fprintf(file,'%5.3f',obj.TrainingAccuracies);
+          
+            fclose(file);
         end
         
                 
