@@ -4,10 +4,10 @@
 %when given the results
 classdef Results
     properties
-        TrainingAccuracies
-        TestAccuracies
-        TrainingDataSizes
-        LabelledAnswers
+        TrainingAccuracies;
+        TestAccuracies;
+        TrainingDataSizes;
+        LabelledAnswers;
         count;
     end
     methods
