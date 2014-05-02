@@ -19,9 +19,10 @@ classdef Results
         function addNewResults(obj,size, trainingResults, trainingPermutation, testingResults, testingPermutation )
             obj.count = obj.count + 1;
             obj.TrainingDataSizes(obj.count) = size; %appending vector
-            obj.TrainingAccuracies(obj.count) = obj.getAccuracy(trainingResults, trainingPermutation);
-            obj.TestAccuracies(obj.count) = obj.getAccuracy(testingResults, testingPermutation);
+            obj.TrainingAccuracies(obj.count) = obj.getAccuracy(trainingResults, trainingPermutation)
+            obj.TestAccuracies(obj.count) = obj.getAccuracy(testingResults, testingPermutation)
             disp(obj.TrainingAccuracies)
+            obj.saveData('./Results/','results.txt',obj.TrainingAccuracies,obj.TestAccuracies,obj.count);
         end
         function acc=getAccuracy(obj, results, permutation)
            %[r, c] = size(results);
@@ -31,11 +32,12 @@ classdef Results
         function pErrors=calcPercentError(obj,results,realThing)
             pErrors = (results - realThing)./realThing;  %dot does elementwise division
         end
-        function saveData(obj,directory,name)
+        function saveData(obj,directory,name,acc1, acc2, sizeoftraining)
             file = fopen([directory name],'w');
             fprintf(file,'Accuracies Data\n');
             fprintf(file,'Size of Training Training Accuracies Testing Accuracies \n');
-            fprintf(file,'%5.3f',obj.TrainingAccuracies);
+            
+            fprintf(file,'%d \t %5.3f \t %5.3f \t',sizeoftraining,acc1, acc2);
           
             fclose(file);
         end
