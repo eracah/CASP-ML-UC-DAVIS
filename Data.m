@@ -55,7 +55,7 @@ classdef Data
             %gets estimate of number of models (numTargets * 2 * one of target's number of models) 
 %             models = deal(models)
             maxModels = obj.numTargets* 2 *obj.targets{randi(obj.numTargets,1,1)}.nModels;
-            disp(maxModels);
+        
             %creates parallel matrix-array pair of features and labels
             dataFeatureValues = zeros(maxModels,obj.numFeatures);
             dataLabels = zeros(maxModels,1);
@@ -70,7 +70,8 @@ classdef Data
                 count = count + nModels;
             end
             totModels = count;
-            disp(totModels);
+            dataFeatureValues(totModels+1:end,:) = [];
+            dataLabels(totModels+1:end,:) = [];
            
         end
         

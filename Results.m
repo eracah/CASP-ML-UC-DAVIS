@@ -14,15 +14,18 @@ classdef Results
         function obj=Results(labels) %constructor
             obj.LabelledAnswers = labels;
             obj.count = 0;
-            
+            numPoints = 200
+            obj.TrainingDataSizes = zeros(numPoints,1);
+            obj.TrainingAccuracies = zeros(numPoints,1);
+            obj.TestAccuracies =zeros(numPoints,1);
         end
         function addNewResults(obj,size, trainingResults, trainingPermutation, testingResults, testingPermutation )
-            obj.count = obj.count + 1;
+            obj.count = obj.count + 1
             obj.TrainingDataSizes(obj.count) = size; %appending vector
-            obj.TrainingAccuracies(obj.count) = obj.getAccuracy(trainingResults, trainingPermutation)
-            obj.TestAccuracies(obj.count) = obj.getAccuracy(testingResults, testingPermutation)
-            disp(obj.TrainingAccuracies)
-            obj.saveData('./Results/','results.txt',obj.TrainingAccuracies,obj.TestAccuracies,obj.count);
+            obj.TrainingAccuracies(obj.count) = obj.getAccuracy(trainingResults, trainingPermutation);
+            obj.TestAccuracies(obj.count) = obj.getAccuracy(testingResults, testingPermutation);
+            disp(obj.TrainingAccuracies);
+            obj.saveData('./Results/','results.txt',obj.TrainingAccuracies,obj.TestAccuracies,length(trainingPermutation));
         end
         function acc=getAccuracy(obj, results, permutation)
            %[r, c] = size(results);
@@ -30,7 +33,7 @@ classdef Results
            acc = mean(obj.calcPercentError(results,obj.LabelledAnswers(permutation))); %for now. Not sure how to calculate accuracy for regression
         end
         function pErrors=calcPercentError(obj,results,realThing)
-            pErrors = (results - realThing)./realThing;  %dot does elementwise division
+            pErrors = (results - realThing)./realThing  %dot does elementwise division
         end
         function saveData(obj,directory,name,acc1, acc2, sizeoftraining)
             file = fopen([directory name],'w');
