@@ -5,8 +5,13 @@ clear
 
 clear
 clc
+tic;
+addpath('Results','Keasar');
+
+
 dat = Data('.','CASP8_9_10_ends.mat', 'gdt_ts', 'bondEnergy', 'secondaryStructureFraction');
 [trainingData,trainingPermutation, testData, testPermutation, labels] = dat.getTestAndTrainingData(0.8);
+disp(toc)
 
 % tic;
 % [IDX, D] = knnsearch(trainingData,testData);
@@ -17,18 +22,13 @@ dat = Data('.','CASP8_9_10_ends.mat', 'gdt_ts', 'bondEnergy', 'secondaryStructur
 % disp(t1);
 
 res = Results(labels);
-% res.addNewResults(length(trainingResults),trainingResults, trainingPermutation, testResults, testPermutation);
+%res.addNewResults(length(trainingResults),trainingResults, trainingPermutation, testResults, testPermutation);
 
 tic;
-params = labels(trainingPermutation)\trainingData;
-testResults = testData * params';
-trainingResults = trainingData * params';
+regressionTrainingData = [trainingData ones(length(trainingData(:,1)),1)];
+regressionTestData = [testData ones(length(testData(:,1)),1)];
+beta = pinv(regressionTrainingData)*labels(trainingPermutation);
+testResults = regressionTestData * beta;
+trainingResults = regressionTrainingData * beta;
 t2 = toc;
-disp(t2);
-% res.addNewResults(length(trainingResults),trainingResults, trainingPermutation, testResults, testPermutation);
-
-
-
-
-
-
+res.addNewResults(length(trainingResults),trainingResults, trainingPermutation, testResults, testPermutation);
