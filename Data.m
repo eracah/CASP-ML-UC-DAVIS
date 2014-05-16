@@ -54,7 +54,7 @@ classdef Data
             
             %gets estimate of number of models (numTargets * 2 * one of target's number of models) 
 %             models = deal(models)
-            maxModels = obj.numTargets* 2 *obj.targets{randi(obj.numTargets,1,1)}.nModels;
+            maxModels = obj.numTargets* 2 *obj.targets{1}.nModels;
         
             %creates parallel matrix-array pair of features and labels
             dataFeatureValues = zeros(maxModels,obj.numFeatures);
@@ -69,17 +69,24 @@ classdef Data
                 dataLabels(k) = obj.targets{i}.values(:,obj.outputIndx);
                 count = count + nModels;
             end
-            totModels = count;
+            totModels = count-1;
+            %get rid of extra zeros
             dataFeatureValues(totModels+1:end,:) = [];
             dataLabels(totModels+1:end,:) = [];
+            %takes zscore of values
+            %dataFeatureValues = zscore(dataFeatureValues);
+            
            
         end
         
 
         function [trainingData,trainingPermutation, testData, testPermutation, labels]=getTestAndTrainingData(obj,fractionTraining)
+            %get random permutation indices
             resultsPermu = randsample(1:obj.totalModels, obj.totalModels);
             trainingPermutation = resultsPermu(1:floor(fractionTraining*obj.totalModels));
             testPermutation = resultsPermu(floor(fractionTraining*obj.totalModels)+1:end);
+            
+            %gets random perumtation of data
             trainingData = obj.dataFeatureValues(trainingPermutation,:);
             testData = obj.dataFeatureValues(testPermutation,:);
             labels = obj.dataLabels;
