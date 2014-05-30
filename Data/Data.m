@@ -37,6 +37,7 @@ classdef Data
             
             %get number of features
             obj.numFeatures = obj.endFeatureIndex - obj.startFeatureIndex + 1;
+            
             %do a best estimate of the number of models per target
             obj.modelsPerTargetEstimate = floor((obj.targetsCellArray{1}.nModels + obj.targetsCellArray{obj.totalTargetsInDataset}.nModels) / 2) ;
             obj.totalModels = 0;
@@ -46,11 +47,11 @@ classdef Data
             
         end
        
-            
-        function  [foldStructs testStruct]=getKFoldsAndTestData(obj,numberOfTrainingTargets,numberOfFolds,fractionThatIsTestData) 
+            %if you change any data member in non constructor member functions you have to return the obj 
+        function  [foldStructs testStruct sizeOfTestData sizeOfTrainingData]=getKFoldsAndTestData(obj,numberOfTrainingTargets,numberOfFolds,fractionThatIsTestData) 
            
             modelsCount = 0;
-            numberOfTestTargets = (fractionThatIsTestData /(1 - fractionThatIsTestData)) * numberOfTrainingTargets;
+            numberOfTestTargets =floor((fractionThatIsTestData /(1 - fractionThatIsTestData)) * numberOfTrainingTargets);
             numberOfTargetsUsed = numberOfTrainingTargets + numberOfTestTargets;
             
             %get a size numberOfTargets used random sample (w/o replacement) of all the
@@ -59,18 +60,17 @@ classdef Data
             targetPermutation = randsample(1:obj.totalTargetsInDataset,numberOfTargetsUsed);
             trainingTargetIndices = targetPermutation(1:numberOfTrainingTargets);
             testTargetIndices = targetPermutation(numberOfTrainingTargets + 1: end);
-            length(testTargetIndices)
-            length(trainingTargetIndices)
+           
             
             %divide up the trainingIndices into clusers of indices and put
             %it each in a struct for that fold
-           foldStructs = cell(numberOfFolds,1);
+            foldStructs = cell(numberOfFolds,1);
             count = 1;
             for i = 1:numberOfFolds
                 
                 foldTargetIndices = trainingTargetIndices(count : count + floor(numberOfTrainingTargets / numberOfFolds) - 1);
                 estimatedModelsPerFold = length(foldTargetIndices)*2*obj.modelsPerTargetEstimate;
-                foldStructs{i} = struct('targetIndices',foldTargetIndices,'data',zeros(estimatedModelsPerFold,obj.numFeatures),'labels',zeros(estimatedModelsPerFold,1));
+                foldStructs{i} = struct('targetIndices',foldTargetIndices,'data',zeros(estimatedModelsPerFold,obj.numFeatures),'labels',zeros(estimatedModelsPerFold,1),'key', zeros(estimatedModelsPerFold,1));
                 count = count + floor(numberOfTrainingTargets / numberOfFolds);
             end
             
@@ -79,10 +79,10 @@ classdef Data
                  modelsCount = modelsCount + length(foldStructs{fold}.data(:,1)); 
             end
             modelsPerTest = length(testTargetIndices)*obj.modelsPerTargetEstimate;
-            testStruct = struct('targetIndices',testTargetIndices,'data',zeros(modelsPerTest,obj.numFeatures),'labels',zeros(modelsPerTest,1));
+            testStruct = struct('targetIndices',testTargetIndices,'data',zeros(modelsPerTest,obj.numFeatures),'labels',zeros(modelsPerTest,1),'key', zeros(estimatedModelsPerFold,1));
             testStruct = obj.addDataToStruct(testStruct);
-            modelsCount = modelsCount + length(testStruct.data(:,1)); 
-            obj.totalModels = modelsCount;
+            sizeOfTestData = length(testStruct.data(:,1)); 
+            sizeOfTrainingData = modelsCount; %this will not get changed unless data object overwritten
             
         end
         
@@ -96,85 +96,29 @@ classdef Data
          
         function [theStruct]= addDataToStruct(obj,theStruct)
             count = 1;
-            for targetIndex = 1:length(theStruct.targetIndices)
+            for targetArrayIndex = 1:length(theStruct.targetIndices)
+                    targetIndex = theStruct.targetIndices(targetArrayIndex);
                     [aTargetsData aTargetsLabel] = obj.getTargetData(targetIndex);
                     modelsInThisTarget = length(aTargetsData(:,1));
-                    theStruct.data(count:count + modelsInThisTarget - 1,:) = aTargetsData;
-                    theStruct.labels(count:count + modelsInThisTarget - 1) = aTargetsLabel;
+                    modelsRange = count:count + modelsInThisTarget - 1;
+                    theStruct.data(modelsRange,:) = aTargetsData;
+                    theStruct.labels(modelsRange) = aTargetsLabel;
+                    
+                    theStruct.key(modelsRange) = targetIndex.*ones(length(modelsRange),1); %key is vector to data matrix that says which
+                    %target model belongs to using target index
                     count = count + modelsInThisTarget;
+                    
                     
             end
             %clear the zeros
-            theStruct.data(count:end,:)= []
-            theStruct.labels(count:end) = []
+            theStruct.data(count:end,:)= [];
+            theStruct.labels(count:end) = [];
+            theStruct.key(count:end) = [];
+            
             
         end
         
-           
-        
-          
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-%             %creates parallel matrix-array pair of features and labels
-%             dataFeatureValues = zeros(maxModels,obj.numFeatures);  
-%             dataLabels = zeros(maxModels,1);
-%             
-%             %loops thru and grabs all the models for each target
-%             count = 1;
-%             for i = 1:obj.numTargets
-%                 
-%                 nModels = obj.targets{i}.nModels;
-%                 k = count: count + nModels -1;
-%                 %if find(trainingTargets == i)
-%                     
-%                     
-%                 
-%                 %adds feature data
-%                 dataFeatureValues(k,1:end) = obj.targets{i}.values(:,obj.startFeatureIndex:obj.endFeatureIndex);
-%                 %adds column of target id
-%                 
-%                 
-%                 %gets labels
-%                 dataLabels(k) = obj.targets{i}.values(:,obj.outputIndex);
-%                 
-%                
-%                 count = count + nModels;
-%             end
-%             totModels = count-1;
-%             %get rid of extra zeros
-%             dataFeatureValues(totModels+1:end,:) = [];
-%             dataLabels(totModels+1:end,:) = [];
-%             
-%             %takes zscore of values
-%             %dataFeatureValues = zscore(dataFeatureValues);
-%             
-%            
-%         end
-%         
-% 
-%         function [trainingData,trainingPermutation, testData, testPermutation, labels]=getTestAndTrainingData(obj,fractionTraining)
-%             %get random permutation indices
-%             resultsPermu = randsample(1:obj.totalModels, obj.totalModels);
-%             trainingPermutation = resultsPermu(1:floor(fractionTraining*obj.totalModels));
-%             testPermutation = resultsPermu(floor(fractionTraining*obj.totalModels)+1:end);
-%             
-%             %gets random perumtation of data
-%             trainingData = obj.dataFeatureValues(trainingPermutation,:);
-%             testData = obj.dataFeatureValues(testPermutation,:);
-%             labels = obj.dataLabels;
-%         end
-%         
+
      end
     end
-%     
+     
