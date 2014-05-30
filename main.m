@@ -23,14 +23,14 @@ resultsCellArray = cell(1,numberOfMethods);
 dat = Data('Keasar','CASP8_9_10_ends.mat', 'gdt_ts', 'bondEnergy', 'secondaryStructureFraction');
 
 tic;
-for methodIndex = 1%: numberOfMethods
+for methodIndex = 1: numberOfMethods
     resultsCellArray{methodIndex} = Results(methodStructArray{methodIndex}.method,methodStructArray{methodIndex}.parameterName);
     method = methodStructArray{methodIndex}.method;
     params = methodStructArray{methodIndex}.params;
     numberOfParameters = length(params);
     %get fold to use for parameter testing once per method?
     for sizeIndex = 1 : length(arrayOfNumberOfTargets)
-        sizeIndex
+      
         [foldStructArray testStruct testSize trainingSize] = dat.getKFoldsAndTestData(arrayOfNumberOfTargets(sizeIndex),numberOfFolds, fractionTest);
         foldToLeaveOut = randi(numberOfFolds,1);
         [trainingStruct, CVStruct] = leaveOneOut(foldStructArray,foldToLeaveOut,trainingSize,dat.numFeatures);
