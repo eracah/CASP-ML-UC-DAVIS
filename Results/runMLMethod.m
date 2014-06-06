@@ -16,6 +16,7 @@ function [guess] = runMLMethod(method, params,trainingDataStruct,testDataStruct)
         beta = pinv(regressionTrainingData)*labels;
         guess = regressionTestData * beta;
     end
+
     
     if(strcmp('decisionForest',method))
         B = TreeBagger(params,trainingData,labels,'method','regression');
