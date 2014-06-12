@@ -62,7 +62,7 @@ classdef Data
             testTargetIndices = targetPermutation(numberOfTrainingTargets + 1: end);
            
             
-            %divide up the trainingIndices into clusers of indices and put
+            %divide up the trainingIndices into clusters of indices and put
             %it each in a struct for that fold
             foldStructs = cell(numberOfFolds,1);
             count = 1;
@@ -90,6 +90,8 @@ classdef Data
         
         function [aTargetsData, aTargetsLabel] = getTargetData(obj,targetIndex)
             aTargetsData = obj.targetsCellArray{targetIndex}.values(:,obj.startFeatureIndex:obj.endFeatureIndex);
+            %get zscore
+            aTargetsData = zscore(aTargetsData);
             aTargetsLabel = obj.targetsCellArray{targetIndex}.values(:,obj.outputIndex);
         end
         

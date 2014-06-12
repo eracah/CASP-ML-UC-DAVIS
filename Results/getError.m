@@ -1,10 +1,11 @@
 function error=getError(guess, answer,errorType)
+           fprintf('mean guess %f \n',mean(guess));
+           fprintf('mean answer %f \n',mean(answer));
+           
            error = norm(answer - guess, 2); %for now. Not sure how to calculate accuracy for regression
-           if (strcmp(errorType,'MSE')) == 0
-               error = error^2 / length(guess);
-          
-%            elseif (strcmp(errorType,'L2Norm')) == 0
+           error = error^2 / length(guess);
+           fprintf ('error %f \n',error);
         
           
-           end
-        end
+end
+        
