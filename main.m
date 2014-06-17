@@ -5,11 +5,18 @@ addpath('Results','Keasar','Data','Config');
 
 [numberOfFolds fractionTest startConfigs arrayOfNumberOfTargets numberOfMethods methodStructArray errorType numberOfTSetsPerSize] = configureSettings();
 
-theGuess = 0.8;
+
 resultsCellArray = cell(1,numberOfMethods);
 
+%first element is label used for learning and second and third are range of
+%features used
+ColumnsUsed = {'gdt_ts', 'bondEnergy', 'secondaryStructureFraction'};
+pathToData = ['Keasar','/','CASP8_9_10_ends.mat'];
+
+
+
 %get data
-dat = Data('Keasar','CASP8_9_10_ends.mat', 'gdt_ts', 'bondEnergy', 'secondaryStructureFraction');
+dat = Data(pathToData,ColumnsUsed,fractionTest);
 
 tic;
 for methodIndex = 1: numberOfMethods
@@ -23,7 +30,7 @@ for methodIndex = 1: numberOfMethods
         fprintf('\t target size %f \n',arrayOfNumberOfTargets(sizeIndex));
       for trainingSetIndex = 1 : numberOfTSetsPerSize
           fprintf('\t \t training set trial number %f \n',trainingSetIndex);
-            [foldStructArray testStruct testSize trainingSize] = dat.getKFoldsAndTestData(arrayOfNumberOfTargets(sizeIndex),numberOfFolds, fractionTest);
+            [foldStructArray testStruct testSize trainingSize] = dat.getKFoldsAndTestData(arrayOfNumberOfTargets(sizeIndex),numberOfFolds);
             foldToLeaveOut = randi(numberOfFolds,1);
             [trainingStruct, CVStruct] = leaveOneOut(foldStructArray,foldToLeaveOut,trainingSize,dat.numFeatures);
             ErrorArray = zeros(1,numberOfParameters);

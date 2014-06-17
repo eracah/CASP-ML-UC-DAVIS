@@ -11,55 +11,83 @@ classdef Data
         numFeatures
         totalModels
         modelsPerTargetEstimate
-        
+        testFraction
+        numberOfTestTargets
+        targetPermutation
+        testTargetIndices
+        testDataCreated %flag showing whether test data made yet
+        testStruct
     end
     methods
-        function obj=Data(Directory,DotMatFileName, outputName, startFeature, endFeature)
+        function obj=Data(PathToDotMatFile,DataColumnsUsed,fractionOfTargetsThatAreTest)
             % DATA. Constructor
             % Loads dotmat file into memory and extracts targetsData.
+            %obj = Data(Directory,DotMatFileName,DataColumnsUsed) returns
+            %Data object with range of feature columns specified as well as
+            %ouput column
             
-            f = load([Directory '/' DotMatFileName]); %makes a struct with all variable(s) stored 
+            obj.testFraction = fractionOfTargetsThatAreTest;
+            
+            %set flag initially to false
+            obj.testDataCreated = false;
+            
+            %f is a struct with all variable(s) stored 
             %in dot mat file (just one variable in this case, an ExperimentData object)
+            f = load(PathToDotMatFile); 
             
-            %gets ExperimentData object from the struct (ExperimentData object
+            
+            %gets dotmat filename
+            [DotMatFileName remainder] = strtok(PathToDotMatFile,'/');
+            while remainder
+                [DotMatFileName remainder] = strtok(remainder,'/');
+            end
+         
+            
+            %gets the ExperimentData object from the struct (ExperimentData object
             %has same name as the dot mat file minus the '.mat')
             expDataObject = eval(['f.' DotMatFileName(1:end-length('.mat'))]); 
             obj.targetsCellArray = expDataObject.targetsData; %targetsData is cell array of TargetData objects
             obj.totalTargetsInDataset = length(obj.targetsCellArray);
             
-            %get field indices
-            testFields = obj.targetsCellArray{1}.fields;
-            indices = find(ismember(testFields,{outputName;startFeature; endFeature})); %finds index for various features
-            obj.outputIndex = indices(1);
-            obj.startFeatureIndex = indices(2);
-            obj.endFeatureIndex = indices(3);
+            %get field indices for output and the range of features
+            obj = obj.getIndices(DataColumnsUsed);
             
             
             %get number of features
             obj.numFeatures = obj.endFeatureIndex - obj.startFeatureIndex + 1;
             
-            %do a best estimate of the number of models per target
-            obj.modelsPerTargetEstimate = floor((obj.targetsCellArray{1}.nModels + obj.targetsCellArray{obj.totalTargetsInDataset}.nModels) / 2) ;
+            %get a best estimate of the number of models per target
             obj.totalModels = 0;
             for i = 1: length(obj.targetsCellArray)
                 obj.totalModels = obj.totalModels + obj.targetsCellArray{i}.nModels;
             end
+            obj.modelsPerTargetEstimate = floor(obj.totalModels / length(obj.targetsCellArray)) ;
+            
+           
+            obj.numberOfTestTargets = floor(obj.testFraction * obj.totalTargetsInDataset);
+            
+            %get an array that is random sampling of every target in dataset (shuffles all
+            %target numbers)
+            obj.targetPermutation = randsample(1:obj.totalTargetsInDataset,obj.totalTargetsInDataset);
+            
+            %reserves the first chunk of the array for test data
+            obj.testTargetIndices = obj.targetPermutation(1:obj.numberOfTestTargets);
+            
             
         end
        
             %if you change any data member in non constructor member functions you have to return the obj 
-        function  [foldStructs testStruct sizeOfTestData sizeOfTrainingData]=getKFoldsAndTestData(obj,numberOfTrainingTargets,numberOfFolds,fractionThatIsTestData) 
-           
+        function  [foldStructs testStruct sizeOfTestData sizeOfTrainingData] = getKFoldsAndTestData(obj,numberOfTrainingTargets,numberOfFolds) 
+            % GETKFOLDSANDTESTDATA Training Folds and Test Data
+            %
             modelsCount = 0;
-            numberOfTestTargets =floor((fractionThatIsTestData /(1 - fractionThatIsTestData)) * numberOfTrainingTargets);
-            numberOfTargetsUsed = numberOfTrainingTargets + numberOfTestTargets;
             
-            %get a size numberOfTargets used random sample (w/o replacement) of all the
-            %targets and assign the majority (1- fractionThatIsTestData) of the target indices to training
-            %and the rest to testing
-            targetPermutation = randsample(1:obj.totalTargetsInDataset,numberOfTargetsUsed);
-            trainingTargetIndices = targetPermutation(1:numberOfTrainingTargets);
-            testTargetIndices = targetPermutation(numberOfTrainingTargets + 1: end);
+            
+            %selects trainingTargetIndices, a "numberOfTrainingTargets"-sized random sample of all
+            %the targets not already used for test data
+            startIndex = obj.numberOfTestTargets + 1;
+            trainingTargetIndices = randsample (obj.targetPermutation(startIndex:end),numberOfTrainingTargets);
+            
            
             
             %divide up the trainingIndices into clusters of indices and put
@@ -78,11 +106,18 @@ classdef Data
                  foldStructs{fold} = obj.addDataToStruct(foldStructs{fold});
                  modelsCount = modelsCount + length(foldStructs{fold}.data(:,1)); 
             end
-            modelsPerTest = length(testTargetIndices)*obj.modelsPerTargetEstimate;
-            testStruct = struct('targetIndices',testTargetIndices,'data',zeros(modelsPerTest,obj.numFeatures),'labels',zeros(modelsPerTest,1),'key', zeros(estimatedModelsPerFold,1));
-            testStruct = obj.addDataToStruct(testStruct);
-            sizeOfTestData = length(testStruct.data(:,1)); 
-            sizeOfTrainingData = modelsCount; %this will not get changed unless data object overwritten
+            
+            %only creates test struct the first time this member function
+            %is called; otherwise it is already a data member
+            if ~obj.testDataCreated
+                modelsPerTest = length(obj.testTargetIndices)*obj.modelsPerTargetEstimate;
+                obj.testStruct = struct('targetIndices',obj.testTargetIndices,'data',zeros(modelsPerTest,obj.numFeatures),'labels',zeros(modelsPerTest,1),'key', zeros(estimatedModelsPerFold,1));
+                obj.testStruct = obj.addDataToStruct(obj.testStruct);
+                obj.testDataCreated = true;
+            end
+            sizeOfTestData = length(obj.testStruct.data(:,1)); 
+            testStruct = obj.testStruct;
+            sizeOfTrainingData = modelsCount; 
             
         end
         
@@ -118,6 +153,15 @@ classdef Data
             theStruct.key(count:end) = [];
             
             
+        end
+        
+        function [obj]=getIndices(obj,DataColumnsUsed)
+            
+            testFields = obj.targetsCellArray{1}.fields;
+            indices = find(ismember(testFields,DataColumnsUsed)); %finds index for various features
+            obj.outputIndex = indices(1);
+            obj.startFeatureIndex = indices(2);
+            obj.endFeatureIndex = indices(3);
         end
         
 
