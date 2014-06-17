@@ -1,5 +1,6 @@
 function [numberOfFolds fractionTest startConfigs arrayOfNumberOfTargets numberOfMethods methodStructArray errorType numberOfTSetsPerSize] = configureSettings()
- 
+%TODO: put tags or labels in config files to
+    %make more readable and then parse those in this function
 
 fid = fopen('Config/start');
 theFormat = '%f';
