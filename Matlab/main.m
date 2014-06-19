@@ -82,6 +82,12 @@ for methodIndex = 1: numberOfMethods
             testGuesses = runMLMethod(method,bestParam,trainingStruct,testStruct);
             testError = getError(testGuesses,testStruct.labels,errorType);
             
+            %TODO: This:
+                %cvMse = crossval('mse',x,y,'predfun',regf,'Options',paroptions);
+                %regf is anonymous function that is prediction function
+                %regf=@(XTRAIN,ytrain,XTEST)(XTEST*regress(ytrain,XTRAIN));
+                
+                
             %add results to results object
             resultsCellArray{methodIndex} = resultsCellArray{methodIndex}.addNewResults(arrayOfNumberOfTargets(sizeIndex), trainingError, trainingGuesses, testError, testGuesses, bestParam);
       end

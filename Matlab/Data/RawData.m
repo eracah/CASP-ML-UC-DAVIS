@@ -155,6 +155,9 @@ classdef RawData
             for targetArrayIndex = 1:length(theDataObject.targetIndices)
                     targetIndex = theDataObject.targetIndices(targetArrayIndex);
                     [aTargetsData aTargetsLabel] = obj.getTargetData(targetIndex);
+                    
+                    
+                    
                     modelsInThisTarget = length(aTargetsData(:,1));
                     modelsRange = count:count + modelsInThisTarget - 1;
                     theDataObject.data(modelsRange,:) = aTargetsData;

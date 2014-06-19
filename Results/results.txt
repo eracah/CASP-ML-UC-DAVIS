@@ -1,3 +1,0 @@
-Accuracies Data
-Size of Training Training Accuracies Testing Accuracies 
-29345 	 	 	0.108 			 0.102 	
