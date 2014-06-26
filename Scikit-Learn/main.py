@@ -110,7 +110,7 @@ for trainingSize in trainingSizes:
         print("Best parameters set:")
         best_parameters = grid_search.best_estimator_.get_params()
         print best_parameters
-   
+
         print grid_search.score(xTest, yTest)
         print grid_search.grid_scores_
 
