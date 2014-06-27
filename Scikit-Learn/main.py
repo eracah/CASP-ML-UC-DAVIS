@@ -1,4 +1,8 @@
 __author__ = 'Evan Racah'
+import glob
+import time
+import random
+
 import numpy as np
 
 from sklearn.neighbors import KNeighborsRegressor
@@ -6,9 +10,9 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.cross_validation import train_test_split
 from sklearn.grid_search import GridSearchCV
 from sklearn import metrics
-import glob
-import time
-import random
+from Results import MainResult
+from matplotlib import pyplot as plt
+import pylab
 
 
 def concatenateArrays(listOfIndices, sources):
@@ -40,20 +44,19 @@ def concatenateArrays(listOfIndices, sources):
 
 
 #get list of target files
+t1 = time.time()
 path = './Targets/'
 targetFiles = glob.glob(path + '*.csv')
 
 #TODO: get these from config files
 test_size = 0.2
-trainingSizes = [#5,
-                 10]
-''',
+trainingSizes = [10,
                  20,
                  50,
                  100,
                  150,
                  200,
-                 230]'''
+                 230]
 estimators = [KNeighborsRegressor(), RandomForestRegressor()]
 parameterGrids =[{'n_neighbors': [1, 2, 3, 5, 9]}, {'n_estimators': [1, 2, 4, 8, 16 ]}]
 scoring = 'mean_squared_error'
@@ -80,42 +83,52 @@ outputMatrices = np.asarray(outputMatrices)
 xTotalTrain, xTotalTest, yTotalTrain, yTotalTest = train_test_split(inputMatrices, outputMatrices, test_size=test_size)
 
 #concatenate all the targets from test together into one big array (x for features, y for labels)
-xTest, yTest = concatenateArrays(range(len(xTotalTest)), [xTotalTest, yTotalTest])
+x_test, y_test = concatenateArrays(range(len(xTotalTest)), [xTotalTest, yTotalTest])
 
 
+estimator_names = [repr(est).split('(')[0] for est in estimators]
 
+main_results = MainResult(estimator_names)
 
-for trainingSize in trainingSizes:
+for training_size in trainingSizes:
     #get correctly sized subset of training data
-    trainIndices = random.sample(range(len(xTotalTrain)), trainingSize)
+    trainIndices = random.sample(range(len(xTotalTrain)), training_size)
 
     #put all targets selected above into one array per x and y
-    xTrain, yTrain = concatenateArrays(trainIndices, [xTotalTrain, yTotalTrain])
+    x_train, y_train = concatenateArrays(trainIndices, [xTotalTrain, yTotalTrain])
 
     #for each estimator (ML technique)
     for index, estimator in enumerate(estimators):
         #instantiate grid search object
         grid_search = GridSearchCV(estimator, parameterGrids[index], scoring=scoring, n_jobs=1, cv=n_folds)
 
-        print("Performing grid search...")
-        print("parameters:")
+        t0 = time.time()
+        #find best fit for training data
+        grid_search.fit(x_train, y_train)
+        search_time = time.time() - t0
 
         t0 = time.time()
+        #fit estimator with best parameters to training data
+        grid_search.best_estimator_.fit(x_train, y_train)
+        time_to_fit = time.time() - t0
 
-        #find best fit for training data
-        grid_search.fit(xTrain, yTrain)
-        print("done in %0.3fs" % (time.time() - t0))
+        print 'training size: ', training_size, '. best parameter value', ': ', grid_search.best_params_, '. time_to_fit:', time_to_fit
+        print 'search time ', search_time
 
-        print("Best score: %0.3f" % grid_search.best_score_)
-        print("Best parameters set:")
-        best_parameters = grid_search.best_estimator_.get_params()
-        print best_parameters
 
-        print grid_search.score(xTest, yTest)
-        print grid_search.grid_scores_
+        #add grid_search results to main results to be further processed
+        main_results.add_estimator_results(estimator_names[index], training_size, grid_search, (x_test, y_test), (x_train, y_train),
+                                           time_to_fit)
 
-        print grid_search.best_estimator_.predict(xTest)
-        print metrics.mean_squared_error(grid_search.best_estimator_.predict(xTest), yTest)
+
+
+main_results.plot_learning_curve()
+
+
+main_results.plot_actual_vs_predicted_curve()
+print 'total time', time.time()-t1
+pylab.show()
+
 
 
 
