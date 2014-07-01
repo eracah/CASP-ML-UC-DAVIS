@@ -1,150 +1,23 @@
 __author__ = 'Evan Racah'
-import glob
-import time
-import random
+from HelperFunctions import recall
+from Learn import Learn
+from Visualization import Visualization
 
-import numpy as np
+from ReadConfigs import path, estimators, \
+                        training_sizes, parameter_grids, n_folds, scoring, trials_per_size, test_size
+#TODO do not put saving in MainResult either
+# results_filename = '7-1-2014_Main_Result.dat'
+# results_path = './Results/Data/'
+# main_results = recall(results_path, results_filename)
 
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.cross_validation import train_test_split
-from sklearn.grid_search import GridSearchCV
-from sklearn import metrics
-from Results import MainResult
-from matplotlib import pyplot as plt
-import pylab
-
-
-def concatenateArrays(listOfIndices, sources):
-    '''take a list of arrays (called sources ie. test and train) that each contain subarrays, and concatenate
-    all the rows of every subarrays into one array for each array in the list
-    listOfIndices: the indices of the subarrays from each array in sources to concatenate
-    sources: list of arrays that each contain subarrays
-    for example if I have two arrays, test and train that each have 60 subarrays inside them
-    then my destination list will have two arrays test and train that each have all the data
-    from the 60 subarrays in one array.
-    '''
-
-    #make as many destination arrays (0's to begin with) as source arrays
-    destinations = [0 for _ in sources]
-
-    #loop through the listOfIndices
-    for count, targetIndex in enumerate(listOfIndices):
-
-        #if we're on the first iteration set an initial value for the destinations (replace the 0's)
-        if count == 0:
-            #for each source make the destination equal to the targetIndex-th subarray from that source
-            for Index in range(len(sources)):
-                destinations[Index] = sources[Index][targetIndex]
-
-        else:
-            #for each source concatenate the destination and the targetIndex-th subarray from that source
-            for Index in range(len(destinations)):
-                destinations[Index] = np.concatenate((destinations[Index], sources[Index][targetIndex]))
-    return destinations
+learner = Learn(path, estimators, test_size)
+main_results = learner.run_grid_search(training_sizes, parameter_grids, trials_per_size, n_folds, scoring)
+main_results.save_data()
+viz = Visualization(main_results)
+viz.plot_all()
+viz.show()
 
 
-
-
-#get list of target files
-t1 = time.time()
-path = './Targets/'
-targetFiles = glob.glob(path + '*.csv')
-
-#TODO: get these from config files
-######################
-test_size = 0.2
-trainingSizes = [10,
-                 20,
-                 50,
-                 100,
-                 150,
-                 200,
-                 230]
-estimators = [KNeighborsRegressor(), RandomForestRegressor()]
-parameterGrids =[{'n_neighbors': [1, 2, 3, 5, 9]}, {'n_estimators': [1, 2, 4, 8, 16 ]}]
-scoring = 'mean_squared_error'
-n_folds = 5
-#####################
-
-
-#preallocate python lists
-inputMatrices = len(targetFiles)*[0]
-outputMatrices = len(targetFiles)*[0]
-
-#convert every target csv file to numpy matrix and split up between
-#input and output (label)
-for targetFile in targetFiles:
-    # all target files of form target_number.csv, so
-    #this strips the .csv to get the number as a string and then makes it an int
-    targetNumber = int(targetFile[len(path):-len('.csv')])
-
-    #get array from csv files
-    target = np.genfromtxt(targetFile, delimiter=',')
-
-    #last column of target array is the output (gdt-ts values)
-    outputMatrices[targetNumber-1] = target[:, -1]
-
-    #the rest of array is all the features (the input)
-    inputMatrices[targetNumber-1] = target[:, 0:-1]
-
-
-
-#convert python list to numpy array (inefficient?) (needed?)
-inputMatrices = np.asarray(inputMatrices)
-outputMatrices = np.asarray(outputMatrices)
-
-#split up into training and testing using test_size as the proportion value
-xTotalTrain, xTotalTest, yTotalTrain, yTotalTest = train_test_split(inputMatrices, outputMatrices, test_size=test_size)
-
-#concatenate all the targets from test together into one big array (x for features, y for labels)
-x_test, y_test = concatenateArrays(range(len(xTotalTest)), [xTotalTest, yTotalTest])
-
-#take the 'estimator_name' from 'estimator_name()' ie KNeighborsRegressor() becomes 'KNeighborsRegressor'
-estimator_names = [repr(est).split('(')[0] for est in estimators]
-
-
-#instantiate a main result object
-main_results = MainResult(estimator_names)
-
-for training_size in trainingSizes:
-    #get correctly sized subset of training data
-    trainIndices = random.sample(range(len(xTotalTrain)), training_size)
-
-    #put all targets selected above into one array per x and y
-    x_train, y_train = concatenateArrays(trainIndices, [xTotalTrain, yTotalTrain])
-
-    #for each estimator (ML technique)
-    for index, estimator in enumerate(estimators):
-        #instantiate grid search object
-        grid_search = GridSearchCV(estimator, parameterGrids[index], scoring=scoring, n_jobs=1, cv=n_folds)
-
-        t0 = time.time()
-        #find best fit for training data
-        grid_search.fit(x_train, y_train)
-        search_time = time.time() - t0
-
-        t0 = time.time()
-        #fit estimator with best parameters to training data
-        grid_search.best_estimator_.fit(x_train, y_train)
-        time_to_fit = time.time() - t0
-
-        print 'training size: ', training_size, '. best parameter value', ': ', grid_search.best_params_, '. time_to_fit:', time_to_fit
-        print 'search time ', search_time
-
-
-        #add grid_search results to main results to be further processed
-        main_results.add_estimator_results(estimator_names[index], training_size, grid_search, (x_test, y_test), (x_train, y_train),
-                                           time_to_fit)
-
-
-#get the plots desired
-main_results.plot_learning_curve()
-
-
-main_results.plot_actual_vs_predicted_curve()
-print 'total time', time.time()-t1
-pylab.show()
 
 
 
