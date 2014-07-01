@@ -144,8 +144,10 @@ classdef RawData
         function [aTargetsData, aTargetsLabel] = getTargetData(obj,targetIndex)
             aTargetsData = obj.targetsCellArray{targetIndex}.values(:,obj.startFeatureIndex:obj.endFeatureIndex);
             
-            %get zscore data
+            %get zscore of the data
             aTargetsData = zscore(aTargetsData);
+            
+            %no zscore of the labels
             aTargetsLabel = obj.targetsCellArray{targetIndex}.values(:,obj.outputIndex);
         end
         

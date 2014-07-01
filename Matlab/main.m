@@ -98,9 +98,10 @@ for methodIndex = 1: numberOfMethods
     resultsCellArray{methodIndex} = resultsCellArray{methodIndex}.prepareForVisualize();
 end
 %visualize(all of the methods)
+toc;
 plotAll(resultsCellArray);
 %save the results
-save(resultsPath,resultsCellArray);
-toc;
+save(resultsPath,'resultsCellArray');
+
 
 

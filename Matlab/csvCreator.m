@@ -1,3 +1,4 @@
+%Evan Racah
 clear
 clc
 addpath('Results','Keasar','Data','Config');
@@ -15,6 +16,7 @@ rdat = RawData(pathToData,ColumnsUsed,fractionTest);
 %loop through and grab each matrix of data and save to its own csv file
 for targetIndex = 1:rdat.totalTargetsInDataset
     
+%aTargets Label put as last column
 [aTargetsData aTargetsLabel] = rdat.getTargetData(targetIndex);
 fileName = sprintf('%d.csv',targetIndex);
 path = './../Scikit-Learn/Targets/';

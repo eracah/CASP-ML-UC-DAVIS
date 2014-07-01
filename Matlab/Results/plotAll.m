@@ -20,3 +20,6 @@ for i = 1:length(resultsCellArray)
 
 end
 legend(strings);
+xlabel('Number of Training Targets')
+ylabel('Mean Squared Error')
+title('Learning Curve for KNN and Random Forests')
