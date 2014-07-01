@@ -2,6 +2,10 @@ __author__ = 'Evan Racah'
 
 from sklearn import metrics
 from matplotlib import pyplot as plt
+import time
+import pickle
+import numpy as np
+from HelperFunctions import concatenate_arrays
 
 
 class TrainingSampleResult(object):
@@ -18,21 +22,53 @@ class TrainingSampleResult(object):
         -the time to do the grid search for the grid search object
         """
     #TODO: add in more time metrics to this class
-    def __init__(self, grid_search_object, test_data, train_data, time_to_fit):
+    def __init__(self, trials_per_size):
+        self.trials = trials_per_size
+        self.count = 0
+        self.best_parameter_values = trials_per_size * [0]
+        #gets cross validation error for each parameter value tried (as a tuple
+        self.error_parameter_values = trials_per_size*[0]
+        self.test_predicted_values = trials_per_size * [0]
+        self.test_actual_values = trials_per_size * [0]
+        self.train_predicted_values = trials_per_size * [0]
+        self.train_actual_values = trials_per_size * [0]
+        self.test_prediction_error = trials_per_size * [0]
+        self.train_prediction_error = trials_per_size * [0]
+        self.time_to_fit = trials_per_size*[0]
+
+
+    def add_sample_results(self, grid_search_object, test_data, train_data, time_to_fit):
         x_test, y_test = test_data
         x_train, y_train = train_data
 
-        self.best_parameter_values = grid_search_object.best_estimator_.get_params()
+
+        self.best_parameter_values[self.count] = grid_search_object.best_estimator_.get_params()
 
         #gets cross validation error for each parameter value tried (as a tuple
-        self.error_parameter_values = grid_search_object.grid_scores_
-        self.test_predicted_values = grid_search_object.best_estimator_.predict(x_test)
-        self.test_actual_values = y_test
-        self.train_predicted_values = grid_search_object.best_estimator_.predict(x_train)
-        self.train_actual_values = y_train
-        self.test_prediction_error = metrics.mean_squared_error(self.test_predicted_values, self.test_actual_values)
-        self.train_prediction_error = metrics.mean_squared_error(self.train_predicted_values, self.train_actual_values)
-        self.time_to_fit = time_to_fit
+        self.error_parameter_values[self.count] = grid_search_object.grid_scores_
+        self.test_predicted_values[self.count] = grid_search_object.best_estimator_.predict(x_test)
+        self.test_actual_values[self.count] = y_test
+        self.train_predicted_values[self.count] = grid_search_object.best_estimator_.predict(x_train)
+        self.train_actual_values[self.count] = y_train
+        self.test_prediction_error[self.count] = metrics.mean_squared_error(self.test_predicted_values[self.count],
+                                                                            self.test_actual_values[self.count])
+        self.train_prediction_error[self.count] = metrics.mean_squared_error(self.train_predicted_values[self.count],
+                                                                             self.train_actual_values[self.count])
+        self.time_to_fit[self.count] = time_to_fit
+        self.count += 1
+        if self.count == self.trials:
+            self.test_predicted_values = self.get_mean(self.test_predicted_values)
+            self.test_actual_values = self.get_mean(self.test_actual_values)
+            #self.train_predicted_values = self.get_mean(self.train_predicted_values)
+            #self.train_actual_values = self.get_mean(self.train_actual_values)
+            self.test_prediction_error = self.get_mean(self.test_prediction_error)
+            self.train_prediction_error = self.get_mean(self.train_prediction_error)
+
+
+    def get_mean(self, python_list):
+        array = np.asarray(python_list)
+        print array.shape
+        return np.mean(array, axis=0)
 
 
 class EstimatorResult(object):
@@ -46,9 +82,14 @@ class EstimatorResult(object):
         self.name = estimator_name
         self.trainingSampleDict = {}
 
-    def add_training_results(self, training_size, grid_search_object, test_data, train_data, time_to_fit):
-        self.trainingSampleDict[training_size] = TrainingSampleResult(grid_search_object, test_data, train_data,
-                                                                      time_to_fit)
+    def add_training_results(self, training_size, grid_search_object, test_data, train_data, time_to_fit, trial,
+                             trials_per_size):
+
+        if trial == 0:
+            self.trainingSampleDict[training_size] = TrainingSampleResult(trials_per_size)
+
+        self.trainingSampleDict[training_size].add_sample_results(grid_search_object, test_data, train_data,
+                                                                  time_to_fit)
 
     def get_test_pred_error(self, train_sample_result):
         #this function is just to make the map function work
@@ -59,12 +100,13 @@ class EstimatorResult(object):
         return train_sample_result.train_prediction_error
 
     def get_test_actuals(self, train_sample_result):
+        #returns the labels (the answers)
         return train_sample_result.test_actual_values
 
     def get_test_predicted(self, train_sample_result):
         return train_sample_result.test_predicted_values
 
-    def get_parameter_errors(self,train_sample_result):
+    def get_parameter_errors(self, train_sample_result):
         return train_sample_result.self.error_parameter_values
 
 
@@ -82,77 +124,45 @@ class EstimatorResult(object):
 
 
 class MainResult(object):
-    '''Main results class:
+    """Main results class:
     Contains a dictionary, which contains an EstimatorResults object for each estimator
-    Also has method for plotting all estimators against each other in a learning curve'''
+    Also has method for plotting all estimators against each other in a learning curve"""
 
     def __init__(self, estimator_names):
         self.estimator_dict = {}
         self.estimator_names = estimator_names
-        self.fig_number = 1
         #add an estimatorResult object for each estimator to the dictionary
         for name in self.estimator_names:
             #make a new key value pair, where key is the estimator and value is an EstimatorResult object
             self.estimator_dict[name] = EstimatorResult(name)
+        t = time.localtime()
+        month = str(t.tm_mon)
+        day = str(t.tm_mday)
+        year = str(t.tm_year)
+        self.date_string = month + '-' + day + '-' + year
 
 
     def add_estimator_results(self, estimator_name, training_size, grid_search_object, test_data, train_data,
-                              time_to_fit):
-
+                              time_to_fit, trial, trials_per_size):
         # adds training results to the EstimatorResult object for the corresponding correct estimator_name
         self.estimator_dict[estimator_name].add_training_results(training_size,
                                                                  grid_search_object,
                                                                  test_data,
                                                                  train_data,
-                                                                 time_to_fit)
+                                                                 time_to_fit, trial, trials_per_size)
 
-    def plot_learning_curve(self):
-        #pick an unused figure to plot on
-        plt.figure(self.fig_number)
-
-        #for every estimator get the train and test errors vectors and the corresponding
-        #training size vectors and plot them both
-        for estimator_name in self.estimator_names:
-            # print estimator_name
-            sizes, test_errors = self.estimator_dict[estimator_name].get_test_prediction_error_data()
-            sizes, train_errors = self.estimator_dict[estimator_name].get_train_prediction_error_data()
-            plt.plot(sizes, test_errors)
-            plt.plot(sizes, train_errors)
-
-        #make list to pass to legend function by taking
-        #the union of every "<estimator_name> test" and "<estimator_name> train" strings
-        legend_list = [[name + 'test', name + 'train'] for name in self.estimator_names]
-        leg_list = []
-        for sub_list in legend_list:
-            leg_list = leg_list + sub_list
-
-        # add legend and other labels
-        plt.legend(leg_list)
-        plt.ylabel('Mean Squared Error')
-        plt.xlabel('Training Size (Number of Targets)')
-        plt.title('Learning Curve')
-        self.fig_number += 1
-
-
-    def plot_actual_vs_predicted_curve(self):
-        for estimator_name in self.estimator_names:
-            sizes, test_actuals, test_predictions = self.estimator_dict[
-                estimator_name].get_actuals_and_predictions_data()
-            plt.figure(self.fig_number)
-            for i, size in enumerate(sizes):
-                plt.figure(self.fig_number)
-                plt.scatter(test_actuals[i], test_predictions[i])
-                plt.ylabel('Predicted Value')
-                plt.xlabel('Actual Value')
-                title_string = 'Predicted vs. Actual for ' + estimator_name + ' and size of ' + str(size)
-                plt.title(title_string)
-                self.fig_number += 1
+    #TODO: Move this outside of this class
+    def save_data(self):
+        filename = self.date_string + '_Main_Result.dat'
+        path = './Results/Data/'
+        with open(path + filename, 'wb') as f:
+            pickle.dump(self, f)
 
 
 
 
-    def plot_parameter_error(self):
-        pass
+
+
 
 
 
