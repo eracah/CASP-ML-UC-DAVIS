@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<config>
+    <estimator name="KNeighborsRegressor">
+        <parameter name="n_neighbors">
+            <start_value>1</start_value>
+            <increment>2</increment>
+            <end_value>20</end_value>
+        </parameter>
+
+    </estimator>
+
+    <estimator name="RandomForestRegressor">
+        <parameter name="n_neighbors">
+            <start_value>2</start_value>
+            <increment>4</increment>
+            <end_value>30</end_value>
+        </parameter>
+    </estimator>
+
+    <training_data>
+        <start_value>10</start_value>
+        <number_of_sizes>7</number_of_sizes>
+        <end_value>241</end_value>
+        <trials_per_size>5</trials_per_size>
+        <n_folds>5</n_folds>
+        <scoring name="mean_squared_error"></scoring>
+    </training_data>
+
+</config>
