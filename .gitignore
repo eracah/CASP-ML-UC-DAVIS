@@ -96,6 +96,7 @@ ipch/
 
 # ReSharper is a .NET coding add-in
 _ReSharper*/
+*.mat
 *.[Rr]e[Ss]harper
 
 # TeamCity is a build add-in

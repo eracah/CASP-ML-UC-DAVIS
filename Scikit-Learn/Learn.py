@@ -12,25 +12,26 @@ from HelperFunctions import concatenate_arrays
 
 class Learn():
 
-    def __init__(self, path_to_targets, estimators, test_size, path_to_store_results, file_name):
+    def __init__(self, config):
+        self.config = config
 
-        input_matrices, output_matrices = self._get_data(path_to_targets)
+        input_matrices, output_matrices = self._get_data(self.config.path_to_targets)
         self.x_test, self.y_test, self.x_total_train, self.y_total_train = self._get_test_and_train(input_matrices,
                                                                                                     output_matrices,
-                                                                                                    test_size)
-        self.estimators = estimators
+                                                                                                    config.test_size)
+        self.estimators = config.estimators
 
         #take the 'estimator_name' from 'estimator_name()' ie 'KNeighborsRegressor()' becomes 'KNeighborsRegressor'
-        self.estimator_names = [repr(est).split('(')[0] for est in estimators]
+        self.estimator_names = [repr(est).split('(')[0] for est in self.estimators]
 
         #instantiate a main result object
-        self.main_results = MainResult(self.estimator_names, path_to_store_results, file_name)
+        self.main_results = MainResult(self.estimator_names, self.config.path_to_store_results, self.config.save_results_file_name)
 
 
-    def run_grid_search(self, training_sizes, parameter_grids, trials_per_size, n_folds, scoring, n_cores ):
+    def run_grid_search(self):
 
-        for training_size in training_sizes:
-            for trial in range(trials_per_size):
+        for training_size in self.config.training_sizes:
+            for trial in range(self.config.trials_per_size):
                 #get correctly sized subset of training data by
                 #sampling a a certain number of indices from all the possible
                 #target indices
@@ -42,7 +43,7 @@ class Learn():
                 #for each estimator (ML technique)
                 for index, estimator in enumerate(self.estimators):
                     #instantiate grid search object
-                    grid_search = GridSearchCV(estimator, parameter_grids[index], scoring=scoring, cv=n_folds, n_jobs=n_cores)
+                    grid_search = GridSearchCV(estimator, self.config.parameter_grids[index], scoring=self.config.scoring, cv=self.config.n_folds, n_jobs=self.config.n_cores)
 
                     t0 = time.time()
                     #find best fit for training data
@@ -59,7 +60,7 @@ class Learn():
 
                     #add grid_search results to main results to be further processed
                     self.main_results.add_estimator_results(self.estimator_names[index], training_size, grid_search, (self.x_test, self.y_test), (x_train, y_train),
-                                                       time_to_fit, trial, trials_per_size)
+                                                       time_to_fit, trial, self.config.trials_per_size)
         return self.main_results
 
     @staticmethod

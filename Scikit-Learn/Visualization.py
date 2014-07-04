@@ -2,15 +2,16 @@ __author__ = 'Evan Racah'
 
 from matplotlib import pyplot as plt
 import math
-from Configs import date_string
+import Configs
 
 class Visualization(object):
 
-    def __init__(self, main_result_obj,path_to_store_graphs):
+    def __init__(self, main_result_obj,configs):
         self.fig_number = 1
         self.results_obj = main_result_obj
-        self.path = path_to_store_graphs
+        self.path = configs.path_to_store_graphs
         self.colors = ['r', 'b', 'g', 'y', 'k', 'm', 'c']
+        self.date = configs.date_string
 
     def plot_all(self):
         self.plot_learning_curve()
@@ -42,7 +43,7 @@ class Visualization(object):
                                'Training Size (Number of Targets)',
                                'Mean Squared Error',
                                legend_list=leg_list)
-        plt.savefig(self.path + plot_string + '/'+ date_string + '_'+ plot_string + '.jpg')
+        plt.savefig(self.path + plot_string + '/'+ self.date + '_'+ plot_string + '.jpg')
 
         self.fig_number += 1
 
@@ -75,7 +76,7 @@ class Visualization(object):
                 self.set_plot_captions(title_string,'Actual Value', 'Predicted Value')
 
 
-            plt.savefig(self.path + plot_string + '/' + date_string + '_' + estimator_name + '_' +'_' + plot_string + '.jpg')
+            plt.savefig(self.path + plot_string + '/' +self.date + '_' + estimator_name + '_' +'_' + plot_string + '.jpg')
             self.fig_number += 1
 
 
