@@ -24,6 +24,7 @@ class TrainingSampleResult(object):
         """
     #TODO: add in more time metrics to this class
     def __init__(self, trials_per_size):
+        #self.data_dict = {'test_predicted_values':3}
         self.trials = trials_per_size
         self.count = 0
         self.best_parameter_values = trials_per_size * [0]
@@ -130,13 +131,17 @@ class MainResult(object):
     Also has method for plotting all estimators against each other in a learning curve"""
 
     def __init__(self, estimator_names, path_to_store_results, file_name):
+        """
+
+        :type self: object
+        """
         self.estimator_dict = {}
         self.estimator_names = estimator_names
+
         #add an estimatorResult object for each estimator to the dictionary
         for name in self.estimator_names:
             #make a new key value pair, where key is the estimator and value is an EstimatorResult object
             self.estimator_dict[name] = EstimatorResult(name)
-
 
         self.filename = file_name
         self.path = path_to_store_results
@@ -144,6 +149,7 @@ class MainResult(object):
 
     def add_estimator_results(self, estimator_name, training_size, grid_search_object, test_data, train_data,
                               time_to_fit, trial, trials_per_size):
+
         # adds training results to the EstimatorResult object for the corresponding correct estimator_name
         self.estimator_dict[estimator_name].add_training_results(training_size,
                                                                  grid_search_object,
