@@ -10,28 +10,24 @@ from Results import MainResult
 from HelperFunctions import concatenate_arrays
 
 
-
-
-
-#TODO Make a class/functions for this code called Learn, GetInstructions for reading configs and Recall for pulling from hard drive
-#GetInstrutions(); Learn(); Visualize(); or Recall(); Visualize();
-
 class Learn():
 
-    def __init__(self, path_to_targets, estimators, test_size):
+    def __init__(self, path_to_targets, estimators, test_size, path_to_store_results, file_name):
 
         input_matrices, output_matrices = self._get_data(path_to_targets)
         self.x_test, self.y_test, self.x_total_train, self.y_total_train = self._get_test_and_train(input_matrices,
                                                                                                     output_matrices,
                                                                                                     test_size)
-
         self.estimators = estimators
+
         #take the 'estimator_name' from 'estimator_name()' ie 'KNeighborsRegressor()' becomes 'KNeighborsRegressor'
         self.estimator_names = [repr(est).split('(')[0] for est in estimators]
-        #instantiate a main result object
-        self.main_results = MainResult(self.estimator_names)
 
-    def run_grid_search(self, training_sizes, parameter_grids, trials_per_size, n_folds, scoring ):
+        #instantiate a main result object
+        self.main_results = MainResult(self.estimator_names, path_to_store_results, file_name)
+
+
+    def run_grid_search(self, training_sizes, parameter_grids, trials_per_size, n_folds, scoring, n_cores ):
 
         for training_size in training_sizes:
             for trial in range(trials_per_size):
@@ -46,7 +42,7 @@ class Learn():
                 #for each estimator (ML technique)
                 for index, estimator in enumerate(self.estimators):
                     #instantiate grid search object
-                    grid_search = GridSearchCV(estimator, parameter_grids[index], scoring=scoring, n_jobs=1, cv=n_folds)
+                    grid_search = GridSearchCV(estimator, parameter_grids[index], scoring=scoring, cv=n_folds, n_jobs=n_cores)
 
                     t0 = time.time()
                     #find best fit for training data

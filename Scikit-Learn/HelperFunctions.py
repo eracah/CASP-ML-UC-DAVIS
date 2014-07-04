@@ -6,12 +6,6 @@ import numpy as np
 
 #TODO: Have filename be read from a config file
 def recall(path, filename):
-    """
-
-    :param path:
-    :param filename:
-    :return:
-    """
     with open(path + filename, 'rb') as f:
         return pickle.load(f)
 

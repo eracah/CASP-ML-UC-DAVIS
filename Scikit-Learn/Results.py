@@ -8,6 +8,7 @@ import numpy as np
 from HelperFunctions import concatenate_arrays
 
 
+
 class TrainingSampleResult(object):
     """Class that acts sort of like a struct for each estimator/training size combo
     It contains any piece of data that might be relevant for plotting or looking at
@@ -80,15 +81,15 @@ class EstimatorResult(object):
 
     def __init__(self, estimator_name):
         self.name = estimator_name
-        self.trainingSampleDict = {}
+        self.training_sample_dict = {}
 
     def add_training_results(self, training_size, grid_search_object, test_data, train_data, time_to_fit, trial,
                              trials_per_size):
 
         if trial == 0:
-            self.trainingSampleDict[training_size] = TrainingSampleResult(trials_per_size)
+            self.training_sample_dict[training_size] = TrainingSampleResult(trials_per_size)
 
-        self.trainingSampleDict[training_size].add_sample_results(grid_search_object, test_data, train_data,
+        self.training_sample_dict[training_size].add_sample_results(grid_search_object, test_data, train_data,
                                                                   time_to_fit)
 
     def get_test_pred_error(self, train_sample_result):
@@ -112,15 +113,15 @@ class EstimatorResult(object):
 
     def get_test_prediction_error_data(self):
         #returns two vectors: vec of all the training sizes and vec of all prediction errors
-        return self.trainingSampleDict.keys(), map(self.get_test_pred_error, self.trainingSampleDict.values())
+        return self.training_sample_dict.keys(), map(self.get_test_pred_error, self.training_sample_dict.values())
 
     def get_train_prediction_error_data(self):
         #returns two vectors: vec of all the training sizes and vec of all prediction errors
-        return self.trainingSampleDict.keys(), map(self.get_train_pred_error, self.trainingSampleDict.values())
+        return self.training_sample_dict.keys(), map(self.get_train_pred_error, self.training_sample_dict.values())
 
     def get_actuals_and_predictions_data(self):
-        return self.trainingSampleDict.keys(), map(self.get_test_actuals, self.trainingSampleDict.values()), \
-               map(self.get_test_predicted, self.trainingSampleDict.values())
+        return self.training_sample_dict.keys(), map(self.get_test_actuals, self.training_sample_dict.values()), \
+               map(self.get_test_predicted, self.training_sample_dict.values())
 
 
 class MainResult(object):
@@ -128,18 +129,17 @@ class MainResult(object):
     Contains a dictionary, which contains an EstimatorResults object for each estimator
     Also has method for plotting all estimators against each other in a learning curve"""
 
-    def __init__(self, estimator_names):
+    def __init__(self, estimator_names, path_to_store_results, file_name):
         self.estimator_dict = {}
         self.estimator_names = estimator_names
         #add an estimatorResult object for each estimator to the dictionary
         for name in self.estimator_names:
             #make a new key value pair, where key is the estimator and value is an EstimatorResult object
             self.estimator_dict[name] = EstimatorResult(name)
-        t = time.localtime()
-        month = str(t.tm_mon)
-        day = str(t.tm_mday)
-        year = str(t.tm_year)
-        self.date_string = month + '-' + day + '-' + year
+
+
+        self.filename = file_name
+        self.path = path_to_store_results
 
 
     def add_estimator_results(self, estimator_name, training_size, grid_search_object, test_data, train_data,
@@ -153,9 +153,7 @@ class MainResult(object):
 
     #TODO: Move this outside of this class
     def save_data(self):
-        filename = self.date_string + '_Main_Result.dat'
-        path = './Results/Data/'
-        with open(path + filename, 'wb') as f:
+        with open(self.path + self.filename, 'wb') as f:
             pickle.dump(self, f)
 
 

@@ -2,14 +2,15 @@ __author__ = 'Evan Racah'
 
 from matplotlib import pyplot as plt
 import math
+from Configs import date_string
 
 class Visualization(object):
 
-    def __init__(self, main_result_obj):
+    def __init__(self, main_result_obj,path_to_store_graphs):
         self.fig_number = 1
         self.results_obj = main_result_obj
-        self.path = './Results/Plots/'
-        self.colors = ['r', 'b', 'g', 'y', 'p', 'k','m','c']
+        self.path = path_to_store_graphs
+        self.colors = ['r', 'b', 'g', 'y', 'k', 'm', 'c']
 
     def plot_all(self):
         self.plot_learning_curve()
@@ -26,8 +27,8 @@ class Visualization(object):
             # print estimator_name
             sizes, test_errors = self.results_obj.estimator_dict[estimator_name].get_test_prediction_error_data()
             sizes, train_errors = self.results_obj.estimator_dict[estimator_name].get_train_prediction_error_data()
-            plt.plot(sizes, test_errors, zorder=3) #c=self.colors[2 * index], marker='_')
-            plt.plot(sizes, train_errors, zorder=3) #c=self.colors[2 * index + 1], marker='_')
+            plt.scatter(sizes, test_errors, c=self.colors[2 * index])
+            plt.scatter(sizes, train_errors, c=self.colors[2 * index + 1])
 
         #make list to pass to legend function by taking
         #the union of every "<estimator_name> test" and "<estimator_name> train" strings
@@ -41,14 +42,13 @@ class Visualization(object):
                                'Training Size (Number of Targets)',
                                'Mean Squared Error',
                                legend_list=leg_list)
-        plt.savefig(self.path + plot_string + '/'+ self.results_obj.date_string + '_'+ plot_string + '.jpg')
+        plt.savefig(self.path + plot_string + '/'+ date_string + '_'+ plot_string + '.jpg')
 
         self.fig_number += 1
 
 
     def plot_actual_vs_predicted_curve(self):
         plot_string = 'Predicted_vs_Actual_Scatter'
-
 
         #for every estimator get predictions and answers at every training size
         for estimator_name in self.results_obj.estimator_names:
@@ -68,14 +68,14 @@ class Visualization(object):
                 #get correct subplot
                 rows_of_subplot = math.ceil(math.sqrt(len(sizes)))
                 plt.subplot(rows_of_subplot*100 + rows_of_subplot*10 + i)
-                plt.scatter(test_actuals[i], test_predictions[i], c=self.colors[i])
+                plt.scatter(test_actuals[i], test_predictions[i], alpha=0.01)
 
 
-                title_string = plot_string + ' for ' + estimator_name + ' and size of ' + str(size)
-                self.set_plot_captions(title_string,'Actual Value', 'Predicted Value', legend_list=sizes)
+                title_string = estimator_name[0:2] + ' and size of ' + str(size)
+                self.set_plot_captions(title_string,'Actual Value', 'Predicted Value')
 
 
-            plt.savefig(self.path + plot_string + '/' + estimator_name + '_' + self.results_obj.date_string +'_' + plot_string + '.jpg')
+            plt.savefig(self.path + plot_string + '/' + date_string + '_' + estimator_name + '_' +'_' + plot_string + '.jpg')
             self.fig_number += 1
 
 
