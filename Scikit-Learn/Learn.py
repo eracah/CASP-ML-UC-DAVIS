@@ -4,46 +4,66 @@ import time
 import random
 import numpy as np
 import glob
+import pickle
+import os.path
+
 from sklearn.cross_validation import train_test_split
 from sklearn.grid_search import GridSearchCV
 from Results import MainResult
-from HelperFunctions import concatenate_arrays
+
+
+class Data:
+    def __init__(self):
+        pass
+
+    def get_targets_array(self):
+        num_targets = max(self.target_ids)
+        target_array = np.asarray(range(num_targets))
+        return target_array
+
+    def select_targets(self, targets):
+        to_select = np.ndarray(0, dtype=int)
+        for t in targets:
+            inds, unused = (self.target_ids == t).nonzero()
+            to_select = np.concatenate((to_select, inds))
+        x_targets = self.input_array[to_select, :]
+        y_targets = self.output_array[to_select]
+        return x_targets, y_targets
+
+    def sample_train(self, num_train):
+        train_targets = random.sample(self.train_targets, num_train)
+        return self.select_targets(train_targets)
 
 
 class Learn():
-
     def __init__(self, config):
         self.config = config
 
-        input_matrices, output_matrices = self._get_data(self.config.path_to_targets)
-        self.x_test, self.y_test, self.x_total_train, self.y_total_train = self._get_test_and_train(input_matrices,
-                                                                                                    output_matrices,
-                                                                                                    config.test_size)
+        data = self._get_data(self.config.path_to_targets)
+
+        self.data = self._get_test_and_train(data, config.test_size)
         self.estimators = config.estimators
 
-        #take the 'estimator_name' from 'estimator_name()' ie 'KNeighborsRegressor()' becomes 'KNeighborsRegressor'
+        # take the 'estimator_name' from 'estimator_name()' ie 'KNeighborsRegressor()' becomes 'KNeighborsRegressor'
         self.estimator_names = [repr(est).split('(')[0] for est in self.estimators]
 
-        #instantiate a main result object
-        self.main_results = MainResult(self.estimator_names, self.config.path_to_store_results, self.config.save_results_file_name)
+        # instantiate a main result object
+        self.main_results = MainResult(self.estimator_names, self.config.path_to_store_results,
+                                       self.config.save_results_file_name)
 
 
     def run_grid_search(self):
-
+        x_test, y_test = self.data.select_targets(self.data.test_targets)
         for training_size in self.config.training_sizes:
             for trial in range(self.config.trials_per_size):
-                #get correctly sized subset of training data by
-                #sampling a a certain number of indices from all the possible
-                #target indices
-                train_indices = random.sample(range(len(self.x_total_train)), training_size)
+                x_train, y_train = self.data.sample_train(training_size)
 
-                #put all targets selected above into one array per x and y
-                x_train, y_train = concatenate_arrays(train_indices, [self.x_total_train, self.y_total_train])
-
-                #for each estimator (ML technique)
+                # for each estimator (ML technique)
                 for index, estimator in enumerate(self.estimators):
                     #instantiate grid search object
-                    grid_search = GridSearchCV(estimator, self.config.parameter_grids[index], scoring=self.config.scoring, cv=self.config.n_folds, n_jobs=self.config.n_cores)
+                    grid_search = GridSearchCV(estimator, self.config.parameter_grids[index],
+                                               scoring=self.config.scoring, cv=self.config.n_folds,
+                                               n_jobs=self.config.n_cores)
 
                     t0 = time.time()
                     #find best fit for training data
@@ -62,45 +82,52 @@ class Learn():
                     #TODO call add estimator results outside this loop in the training size loop not in the trial loop
                     #TODO in the trial loop, make an array of grid search objects and x_train, y_train objects, and pass that to the add estimator_results
                     #add grid_search results to main results to be further processed
-                    self.main_results.add_estimator_results(self.estimator_names[index], training_size, grid_search, (self.x_test, self.y_test), (x_train, y_train),
-                                                       time_to_fit, trial, self.config.trials_per_size)
-
+                    self.main_results.add_estimator_results(self.estimator_names[index], training_size, grid_search,
+                                                            (x_test, y_test), (x_train, y_train),
+                                                            time_to_fit, trial, self.config.trials_per_size)
         return self.main_results
 
     @staticmethod
-    def _get_test_and_train(input_matrices, output_matrices, test_size):
-        #split up into training and testing using test_size as the proportion value
-        x_total_train, x_total_test, y_total_train, y_total_test = train_test_split(input_matrices, output_matrices,
-                                                                                    test_size=test_size)
-        #concatenate all the targets from test together into one big array (x for features, y for labels)
-        x_test, y_test = concatenate_arrays(range(len(x_total_test)), [x_total_test, y_total_test])
-        return x_test, y_test, x_total_train, y_total_train
+    def _get_test_and_train(data, test_size):
+        target_array = data.get_targets_array()
+        data.train_targets, data.test_targets = train_test_split(target_array, test_size=test_size)
+        return data
 
     @staticmethod
     def _get_data(path):
+        data_file_name = 'SavedData/data.p'
+        load_target_data = True
+        if load_target_data and os.path.isfile(data_file_name):
+            data = pickle.load(open(data_file_name, 'rb'))
+        else:
+            # convert every target csv file to numpy matrix and split up between
+            #input and output (label)
+            target_files = glob.glob(path + '*.csv')
+            # preallocate python lists
+            data = Data()
+            input_dim = 68
+            target_id_counter = 0
+            input_array = np.zeros((0, input_dim))
+            output_array = np.zeros(0)
+            target_ids = np.zeros((0, 1))
+            for target_file in target_files:
+                # all target files of form target_number.csv, so
+                #this strips the .csv to get the number as a string and then makes it an int
+                target_index = int(target_file[len(path):-len('.csv')])
 
-        target_files = glob.glob(path + '*.csv')
-        #preallocate python lists
-        input_matrices = len(target_files)*[0]
-        output_matrices = len(target_files)*[0]
+                #get array from csv files
+                target = np.genfromtxt(target_file, delimiter=',')
 
-        #convert every target csv file to numpy matrix and split up between
-        #input and output (label)
-        for target_file in target_files:
-            # all target files of form target_number.csv, so
-            #this strips the .csv to get the number as a string and then makes it an int
-            target_index = int(target_file[len(path):-len('.csv')])
-
-            #get array from csv files
-            target = np.genfromtxt(target_file, delimiter=',')
-
-            #last column of target array is the output (gdt-ts values)
-            output_matrices[target_index-1] = target[:, -1]
-
-            #the rest of array is all the features (the input)
-            input_matrices[target_index-1] = target[:, 0:-1]
-
-        return np.asarray(input_matrices), np.asarray(output_matrices)
+                num_models = target.shape[0]
+                input_array = np.concatenate((input_array, target[:, 0:-1]))
+                output_array = np.concatenate((output_array, target_id_counter * target[:, -1]))
+                target_ids = np.concatenate((target_ids, target_id_counter * np.ones((num_models, 1))))
+                target_id_counter += 1
+            data.input_array = input_array
+            data.output_array = output_array
+            data.target_ids = target_ids
+            pickle.dump(data, open(data_file_name, 'wb'))
+        return data
 
 
 
