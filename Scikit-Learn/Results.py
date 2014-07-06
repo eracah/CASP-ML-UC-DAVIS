@@ -7,6 +7,13 @@ import pickle
 import numpy as np
 
 
+def array_of_dicts_to_list(array_of_dicts):
+    a = []
+    for d in array_of_dicts:
+        a.append(d.values())
+    print a
+    return a
+
 
 class TrainingSampleResult(object):
     """Class that acts sort of like a struct for each estimator/training size combo
@@ -22,54 +29,67 @@ class TrainingSampleResult(object):
         -the time to do the grid search for the grid search object
         """
     #TODO: add in more time metrics to this class
-    def __init__(self, trials_per_size):
-        #self.data_dict = {'test_predicted_values':3}
+    def __init__(self, trials_per_size, test_data):
+        self.data_dict = {  #'best_parameter_values': [],
+                            #'error_parameter_values': [],
+                            'test_predicted_values': [],
+                            'test_actual_values': [],
+                            'test_prediction_error': [],
+                            #'train_predicted_values': [],
+                            'train_prediction_error': []}
+
+        self.x_test, self.y_test = test_data
+        self.grid_search_objects = []
+        self.x_trains = []
+        self.y_trains = []
+        self.times_to_fit = []
         self.trials = trials_per_size
         self.count = 0
-        self.best_parameter_values = trials_per_size * [0]
-        #gets cross validation error for each parameter value tried (as a tuple
-        self.error_parameter_values = trials_per_size*[0]
-        self.test_predicted_values = trials_per_size * [0]
-        self.test_actual_values = trials_per_size * [0]
-        self.train_predicted_values = trials_per_size * [0]
-        self.train_actual_values = trials_per_size * [0]
-        self.test_prediction_error = trials_per_size * [0]
-        self.train_prediction_error = trials_per_size * [0]
-        self.time_to_fit = trials_per_size*[0]
 
 
-    def add_sample_results(self, grid_search_object, test_data, train_data, time_to_fit):
-        x_test, y_test = test_data
+    def add_sample_results(self, grid_search_object, train_data, time_to_fit):
+        self.grid_search_objects.append(grid_search_object)
         x_train, y_train = train_data
-
-
-        self.best_parameter_values[self.count] = grid_search_object.best_estimator_.get_params()
-
-        #gets cross validation error for each parameter value tried (as a tuple
-        self.error_parameter_values[self.count] = grid_search_object.grid_scores_
-        self.test_predicted_values[self.count] = grid_search_object.best_estimator_.predict(x_test)
-        self.test_actual_values[self.count] = y_test
-        self.train_predicted_values[self.count] = grid_search_object.best_estimator_.predict(x_train)
-        self.train_actual_values[self.count] = y_train
-        self.test_prediction_error[self.count] = metrics.mean_squared_error(self.test_predicted_values[self.count],
-                                                                            self.test_actual_values[self.count])
-        self.train_prediction_error[self.count] = metrics.mean_squared_error(self.train_predicted_values[self.count],
-                                                                             self.train_actual_values[self.count])
-        self.time_to_fit[self.count] = time_to_fit
+        self.x_trains.append(x_train)
+        self.y_trains.append(y_train)
+        self.times_to_fit.append(time_to_fit)
         self.count += 1
         if self.count == self.trials:
-            self.test_predicted_values = self.get_mean(self.test_predicted_values)
-            self.test_actual_values = self.get_mean(self.test_actual_values)
-            #self.train_predicted_values = self.get_mean(self.train_predicted_values)
-            #self.train_actual_values = self.get_mean(self.train_actual_values)
-            self.test_prediction_error = self.get_mean(self.test_prediction_error)
-            self.train_prediction_error = self.get_mean(self.train_prediction_error)
+            self.get_performance_of_data()
+            self.calc_average_of_runs()
 
 
-    def get_mean(self, python_list):
-        array = np.asarray(python_list)
-        print array.shape
-        return np.mean(array, axis=0)
+    def get_performance_of_data(self):
+
+
+        self.data_dict['time_to_fit'] = self.times_to_fit
+        #self.data_dict['train_actual_values'] = self.y_trains
+        for index, grid in enumerate(self.grid_search_objects):
+            #self.data_dict['best_parameter_values'].append(grid.best_estimator_.get_params())
+            # self.data_dict['error_parameter_values'].append(grid.grid_scores_._asdict())
+            self.data_dict['test_predicted_values'].append(grid.best_estimator_.predict(self.x_test))
+            self.data_dict['test_actual_values'].append(self.y_test)
+            self.data_dict['test_prediction_error'].append(metrics.mean_squared_error(
+                                                    self.data_dict['test_predicted_values'][index],
+                                                    self.data_dict['test_actual_values'][index]))
+            #self.data_dict['train_predicted_values'].append(grid.best_estimator_.predict(self.x_trains[index]))
+            self.data_dict['train_prediction_error'].append(metrics.mean_squared_error(
+                                                            grid.best_estimator_.predict(self.x_trains[index]),
+                                                            self.y_trains[index]))
+
+        #turn any lists of numpy arrays into a matrix with each row as one of the arrays
+        for key in ('test_predicted_values', 'test_actual_values'):
+            self.data_dict[key] = concatenate_arrays(range(self.trials), [self.data_dict[key]])
+
+
+
+    def calc_average_of_runs(self):
+        for key in self.data_dict.keys():
+            data_piece = self.data_dict[key]
+            # if isinstance(data_piece[0], dict):
+            #     print data_piece
+            #else:
+            self.data_dict[key] = np.mean(self.data_dict[key], axis=0)
 
 
 class EstimatorResult(object):
@@ -85,43 +105,33 @@ class EstimatorResult(object):
 
     def add_training_results(self, training_size, grid_search_object, test_data, train_data, time_to_fit, trial,
                              trials_per_size):
-
         if trial == 0:
-            self.training_sample_dict[training_size] = TrainingSampleResult(trials_per_size)
+            self.training_sample_dict[training_size] = TrainingSampleResult(trials_per_size, test_data)
 
-        self.training_sample_dict[training_size].add_sample_results(grid_search_object, test_data, train_data,
-                                                                  time_to_fit)
+        self.training_sample_dict[training_size].add_sample_results(grid_search_object, train_data,
+                                                                    time_to_fit)
 
-    def get_test_pred_error(self, train_sample_result):
-        #this function is just to make the map function work
-        return train_sample_result.test_prediction_error
+    def _get_get_fxn(self,data_name):
+        def f(training_sample_obj):
+            return training_sample_obj.data_dict[data_name]
+        return f
 
-    def get_train_pred_error(self, train_sample_result):
-        #this function is just to make the map function work
-        return train_sample_result.train_prediction_error
+    def get_data(self, data_name):
+        func = self._get_get_fxn(data_name)
+        return map(func, self.training_sample_dict.values())
 
-    def get_test_actuals(self, train_sample_result):
-        #returns the labels (the answers)
-        return train_sample_result.test_actual_values
+    def get_plot_arrays(self, names):
+        ret = len(names)*[0]
+        for i, name in enumerate(names):
+            if name == 'training_size':
+                ret[i] = self.training_sample_dict.keys()
+            else:
+                ret[i] = self.get_data(name)
 
-    def get_test_predicted(self, train_sample_result):
-        return train_sample_result.test_predicted_values
-
-    def get_parameter_errors(self, train_sample_result):
-        return train_sample_result.self.error_parameter_values
+        return ret
 
 
-    def get_test_prediction_error_data(self):
-        #returns two vectors: vec of all the training sizes and vec of all prediction errors
-        return self.training_sample_dict.keys(), map(self.get_test_pred_error, self.training_sample_dict.values())
 
-    def get_train_prediction_error_data(self):
-        #returns two vectors: vec of all the training sizes and vec of all prediction errors
-        return self.training_sample_dict.keys(), map(self.get_train_pred_error, self.training_sample_dict.values())
-
-    def get_actuals_and_predictions_data(self):
-        return self.training_sample_dict.keys(), map(self.get_test_actuals, self.training_sample_dict.values()), \
-               map(self.get_test_predicted, self.training_sample_dict.values())
 
 
 class MainResult(object):
@@ -148,7 +158,6 @@ class MainResult(object):
 
     def add_estimator_results(self, estimator_name, training_size, grid_search_object, test_data, train_data,
                               time_to_fit, trial, trials_per_size):
-
         # adds training results to the EstimatorResult object for the corresponding correct estimator_name
         self.estimator_dict[estimator_name].add_training_results(training_size,
                                                                  grid_search_object,

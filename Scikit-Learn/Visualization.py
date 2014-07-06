@@ -6,33 +6,33 @@ import Configs
 
 class Visualization(object):
 
-    def __init__(self, main_result_obj,configs):
+    def __init__(self, main_result_obj, configs):
         self.fig_number = 1
         self.results_obj = main_result_obj
         self.path = configs.path_to_store_graphs
         self.colors = ['r', 'b', 'g', 'y', 'k', 'm', 'c']
         self.date = configs.date_string
+        self.color = 0
 
     def plot_all(self):
         self.plot_learning_curve()
         self.plot_actual_vs_predicted_curve()
 
+
+    def scatter_data(self, x_name, y_name):
+        for est in self.results_obj.estimator_names:
+            x, y = self.results_obj.estimator_dict[est].get_plot_arrays((x_name, y_name))
+            plt.scatter(x, y,c=self.colors[self.color])
+            self.color += 1
+
+
+
     def plot_learning_curve(self):
-        plot_string = 'Learning_Curve'
-        #pick an unused figure to plot on
+
         plt.figure(self.fig_number)
-
-        #for every estimator get the train and test errors vectors and the corresponding
-        #training size vectors and plot them both
-        for index, estimator_name in enumerate(self.results_obj.estimator_names):
-            # print estimator_name
-            sizes, test_errors = self.results_obj.estimator_dict[estimator_name].get_test_prediction_error_data()
-            sizes, train_errors = self.results_obj.estimator_dict[estimator_name].get_train_prediction_error_data()
-            plt.scatter(sizes, test_errors, c=self.colors[2 * index])
-            plt.scatter(sizes, train_errors, c=self.colors[2 * index + 1])
-
-        #make list to pass to legend function by taking
-        #the union of every "<estimator_name> test" and "<estimator_name> train" strings
+        self.scatter_data('training_size', 'test_prediction_error')
+        self.scatter_data('training_size', 'train_prediction_error')
+        plot_string = 'Learning_Curve'
         legend_list = [[name + 'test', name + 'train'] for name in self.results_obj.estimator_names]
         leg_list = []
         for sub_list in legend_list:
@@ -43,7 +43,7 @@ class Visualization(object):
                                'Training Size (Number of Targets)',
                                'Mean Squared Error',
                                legend_list=leg_list)
-        plt.savefig(self.path + plot_string + '/'+ self.date + '_'+ plot_string + '.jpg')
+        plt.savefig(self.path + '/'+ self.date + '_'+ plot_string + '.jpg')
 
         self.fig_number += 1
 
@@ -58,8 +58,8 @@ class Visualization(object):
             #gdt_ts value of all the models of the the test set and the predicted
             #values using an estimator trained with number of models
             #in the corresponding sizes array
-            sizes, test_actuals, test_predictions = self.results_obj.estimator_dict[
-                estimator_name].get_actuals_and_predictions_data()
+            sizes, test_predictions = self.results_obj.estimator_dict[estimator_name].get_plot_arrays(('training_size', 'test_predicted_values'))
+            test_actuals = self.results_obj.estimator_dict[estimator_name].get_data('test_actual_values')
 
             #plot a scatter plot for each
             plt.figure(self.fig_number)
@@ -76,7 +76,7 @@ class Visualization(object):
                 self.set_plot_captions(title_string,'Actual Value', 'Predicted Value')
 
 
-            plt.savefig(self.path + plot_string + '/' +self.date + '_' + estimator_name + '_' +'_' + plot_string + '.jpg')
+            plt.savefig(self.path + '/' +self.date + '_' + estimator_name + '_' +'_' + plot_string + '.jpg')
             self.fig_number += 1
 
 
