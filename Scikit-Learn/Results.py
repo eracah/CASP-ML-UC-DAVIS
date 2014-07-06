@@ -56,11 +56,11 @@ class TrainingSampleResult(object):
         self.times_to_fit.append(time_to_fit)
         self.count += 1
         if self.count == self.trials:
-            self.get_performance_of_data()
-            self.calc_average_of_runs()
+            self._get_performance_of_data()
+            self._calc_average_of_runs()
 
 
-    def get_performance_of_data(self):
+    def _get_performance_of_data(self):
 
 
         self.data_dict['time_to_fit'] = self.times_to_fit
@@ -84,12 +84,8 @@ class TrainingSampleResult(object):
 
 
 
-    def calc_average_of_runs(self):
+    def _calc_average_of_runs(self):
         for key in self.data_dict.keys():
-            data_piece = self.data_dict[key]
-            # if isinstance(data_piece[0], dict):
-            #     print data_piece
-            #else:
             self.data_dict[key] = np.mean(self.data_dict[key], axis=0)
 
 
@@ -106,28 +102,24 @@ class EstimatorResult(object):
 
     def add_training_results(self, training_size, grid_search_object, test_data, train_data, time_to_fit, trial,
                              trials_per_size):
+        #create
         if trial == 0:
             self.training_sample_dict[training_size] = TrainingSampleResult(trials_per_size, test_data)
 
         self.training_sample_dict[training_size].add_sample_results(grid_search_object, train_data,
                                                                     time_to_fit)
 
-    def _get_get_fxn(self,data_name):
-        def f(training_sample_obj):
-            return training_sample_obj.data_dict[data_name]
-        return f
 
-    def get_data(self, data_name):
-        func = self._get_get_fxn(data_name)
-        return map(func, self.training_sample_dict.values())
+    def get_data(self, data_name, sizes):
+        return [obj.data_dict[data_name] for obj in [self.training_sample_dict[size] for size in sizes]]
 
-    def get_plot_arrays(self, names):
+    def get_plot_arrays(self, sizes, names):
         ret = len(names)*[0]
         for i, name in enumerate(names):
             if name == 'training_size':
                 ret[i] = self.training_sample_dict.keys()
             else:
-                ret[i] = self.get_data(name)
+                ret[i] = self.get_data(name, sizes)
 
         return ret
 

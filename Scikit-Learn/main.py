@@ -23,7 +23,7 @@ main_results = learn_main_results()
 #main_results = recall_main_results(Configs)
 viz = Visualization(main_results, Configs)
 viz.plot_all()
-
+viz.show()
 
 
 

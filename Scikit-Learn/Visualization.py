@@ -3,7 +3,7 @@ __author__ = 'Evan Racah'
 from matplotlib import pyplot as plt
 import math
 import Configs
-
+import numpy as np
 class Visualization(object):
 
     def __init__(self, main_result_obj, configs):
@@ -12,68 +12,64 @@ class Visualization(object):
         self.path = configs.path_to_store_graphs
         self.colors = ['r', 'b', 'g', 'y', 'k', 'm', 'c']
         self.date = configs.date_string
-        self.color = 0
+        self.color_index = 0
 
     def plot_all(self):
         self.plot_learning_curve()
         self.plot_actual_vs_predicted_curve()
 
+    def new_color(self):
+        col = self.colors[self.color_index % len(self.colors)]
+        self.color_index += 1
+        return col
 
-    def scatter_data(self, x_name, y_name):
-        for est in self.results_obj.estimator_names:
-            x, y = self.results_obj.estimator_dict[est].get_plot_arrays((x_name, y_name))
-            plt.scatter(x, y,c=self.colors[self.color])
-            self.color += 1
 
+    def scatter_data(self, estimators, sizes, x_name, y_name, alpha=1):
+            legend = []
+            for estimator in estimators:
+                x, y = self.results_obj.estimator_dict[estimator].get_plot_arrays(sizes, (x_name, y_name))
+                plt.scatter(x, y, c=self.new_color(), alpha=alpha)
+                legend.append(estimator + ' ' + y_name)
+            return legend
 
 
     def plot_learning_curve(self):
 
-        plt.figure(self.fig_number)
-        self.scatter_data('training_size', 'test_prediction_error')
-        self.scatter_data('training_size', 'train_prediction_error')
         plot_string = 'Learning_Curve'
-        legend_list = [[name + 'test', name + 'train'] for name in self.results_obj.estimator_names]
-        leg_list = []
-        for sub_list in legend_list:
-            leg_list = leg_list + sub_list
+        plt.figure(self.fig_number)
+        estimators = self.results_obj.estimator_names
+        l1 = self.scatter_data(estimators, Configs.training_sizes, 'training_size', 'test_prediction_error')
+        l2 = self.scatter_data(estimators, Configs.training_sizes, 'training_size', 'train_prediction_error')
+
 
         # add legend and other labels
         self.set_plot_captions(plot_string,
                                'Training Size (Number of Targets)',
                                'Mean Squared Error',
-                               legend_list=leg_list)
-        plt.savefig(self.path + '/'+ self.date + '_'+ plot_string + '.jpg')
+                               legend_list=l1+l2)
+
+        plt.savefig(self.path + '/' + self.date + '_' + plot_string + '.jpg')
 
         self.fig_number += 1
 
 
     def plot_actual_vs_predicted_curve(self):
-        plot_string = 'Predicted_vs_Actual_Scatter'
 
+        plot_string = 'Predicted_vs_Actual_Scatter'
+        sizes = Configs.training_sizes
         #for every estimator get predictions and answers at every training size
         for estimator_name in self.results_obj.estimator_names:
-            #test_actuals and test_predictions are each an array containing multiple arrays each corresponding
-            #to each training size from sizes. These subarrays contain the actual
-            #gdt_ts value of all the models of the the test set and the predicted
-            #values using an estimator trained with number of models
-            #in the corresponding sizes array
-            sizes, test_predictions = self.results_obj.estimator_dict[estimator_name].get_plot_arrays(('training_size', 'test_predicted_values'))
-            test_actuals = self.results_obj.estimator_dict[estimator_name].get_data('test_actual_values')
-
-            #plot a scatter plot for each
             plt.figure(self.fig_number)
-
             for i, size in enumerate(sizes):
-
                 #get correct subplot
                 rows_of_subplot = math.ceil(math.sqrt(len(sizes)))
                 plt.subplot(rows_of_subplot*100 + rows_of_subplot*10 + i)
-                plt.scatter(test_actuals[i], test_predictions[i], alpha=0.01)
+                self.scatter_data([estimator_name], [size], 'test_actual_values', 'test_predicted_values',alpha=0.01)
+                x = np.linspace(0.0, 1.0, 1000)
+                plt.plot(x, x, color=self.new_color())
 
-
-                title_string = estimator_name[0:2] + ' and size of ' + str(size)
-                self.set_plot_captions(title_string,'Actual Value', 'Predicted Value')
+                title_string = estimator_name[0:3] + ' and size of ' + str(size)
+                self.set_plot_captions(title_string, 'Actual Value', 'Predicted Value')
 
 
             plt.savefig(self.path + '/' +self.date + '_' + estimator_name + '_' +'_' + plot_string + '.jpg')
