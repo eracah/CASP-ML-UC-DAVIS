@@ -95,7 +95,7 @@ class Learn():
 
     @staticmethod
     def _get_data(path):
-        data_file_name = 'Data/data.p'
+        data_file_name = 'SavedData/data.p'
         load_target_data = True
         if load_target_data and os.path.isfile(data_file_name):
             data = pickle.load(open(data_file_name, 'rb'))

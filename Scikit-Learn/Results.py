@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 import time
 import pickle
 import numpy as np
+from HelperFunctions import concatenate_arrays
 
 
 def array_of_dicts_to_list(array_of_dicts):
