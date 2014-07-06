@@ -58,9 +58,13 @@ class Learn():
                     print 'training size: ', training_size, '. best parameter value', ': ', grid_search.best_params_, '. time_to_fit:', time_to_fit
                     print 'search time ', search_time
 
+
+                    #TODO call add estimator results outside this loop in the training size loop not in the trial loop
+                    #TODO in the trial loop, make an array of grid search objects and x_train, y_train objects, and pass that to the add estimator_results
                     #add grid_search results to main results to be further processed
                     self.main_results.add_estimator_results(self.estimator_names[index], training_size, grid_search, (self.x_test, self.y_test), (x_train, y_train),
                                                        time_to_fit, trial, self.config.trials_per_size)
+
         return self.main_results
 
     @staticmethod

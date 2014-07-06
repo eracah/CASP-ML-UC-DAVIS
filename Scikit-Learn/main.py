@@ -13,9 +13,9 @@ def recall_main_results(Configs):
 def learn_main_results():
     #learner = Learn(path_to_targets, estimators, test_size, path_to_store_results, results_filename)
     learner = Learn(Configs)
-    main_results = learner.run_grid_search()
-    main_results.save_data()
-    return main_results
+    Main_results = learner.run_grid_search()
+    Main_results.save_data()
+    return Main_results
 
 
 
@@ -23,7 +23,7 @@ main_results = learn_main_results()
 #main_results = recall_main_results(Configs)
 viz = Visualization(main_results, Configs)
 viz.plot_all()
-# viz.show()
+
 
 
 

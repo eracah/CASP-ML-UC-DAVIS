@@ -20,6 +20,7 @@ def concatenate_arrays(listOfIndices, sources):
     from the 60 subarrays in one array.
     """
 
+
     #make as many destination arrays (0's to begin with) as source arrays
     destinations = [0 for _ in sources]
 
@@ -35,6 +36,7 @@ def concatenate_arrays(listOfIndices, sources):
         else:
             #for each source concatenate the destination and the targetIndex-th subarray from that source
             for Index in range(len(destinations)):
+
                 destinations[Index] = np.concatenate((destinations[Index], sources[Index][targetIndex]))
     return destinations
 
