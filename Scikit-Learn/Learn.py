@@ -86,6 +86,7 @@ class Learn():
                     self.main_results.add_estimator_results(self.estimator_names[index], training_size, grid_search,
                                                             (x_test, y_test), (x_train, y_train),
                                                             time_to_fit, trial, self.config.trials_per_size)
+        self.main_results.save_data()
         return self.main_results
 
     @staticmethod

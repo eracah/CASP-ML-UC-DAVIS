@@ -22,8 +22,8 @@ class TrainingSampleResult(object):
         """
     #TODO: add in more time metrics to this class
     def __init__(self, trials_per_size, test_data):
-        self.data_dict = {  #'best_parameter_values': [],
-                            #'error_parameter_values': [],
+        self.data_dict = {  'best_parameter_values': [],
+                            'error_parameter_values': [],
                             'test_predicted_values': [],
                             'test_actual_values': [],
                             'test_prediction_error': [],
@@ -53,12 +53,15 @@ class TrainingSampleResult(object):
 
     def _get_performance_of_data(self):
 
+        #just pull one trial for best parameter values and error parameter value
+        #because hard to average these ones
+        self.data_dict['best_parameter_values'].append(self.grid_search_objects[0].best_estimator_.get_params())
+        self.data_dict['error_parameter_values'].append(self.grid_search_objects[0].grid_scores_)
 
         self.data_dict['time_to_fit'] = self.times_to_fit
         #self.data_dict['train_actual_values'] = self.y_trains
         for index, grid in enumerate(self.grid_search_objects):
-            #self.data_dict['best_parameter_values'].append(grid.best_estimator_.get_params())
-            # self.data_dict['error_parameter_values'].append(grid.grid_scores_._asdict())
+
             self.data_dict['test_predicted_values'].append(grid.best_estimator_.predict(self.x_test))
             self.data_dict['test_actual_values'].append(self.y_test)
             self.data_dict['test_prediction_error'].append(metrics.mean_squared_error(
@@ -77,7 +80,8 @@ class TrainingSampleResult(object):
 
     def _calc_average_of_runs(self):
         for key in self.data_dict.keys():
-            self.data_dict[key] = np.mean(self.data_dict[key], axis=0)
+            if not (key =='best_parameter_values' or key =='error_parameter_values'):
+                self.data_dict[key] = np.mean(self.data_dict[key], axis=0)
 
 
 class EstimatorResult(object):
@@ -108,7 +112,7 @@ class EstimatorResult(object):
         ret = len(names)*[0]
         for i, name in enumerate(names):
             if name == 'training_size':
-                ret[i] = self.training_sample_dict.keys()
+                ret[i] = sizes
             else:
                 ret[i] = self.get_data(name, sizes)
 
