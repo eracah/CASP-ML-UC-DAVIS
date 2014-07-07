@@ -29,11 +29,12 @@ class Data:
             to_select = np.concatenate((to_select, inds))
         x_targets = self.input_array[to_select, :]
         y_targets = self.output_array[to_select]
-        return x_targets, y_targets
+        return x_targets, y_targets, np.asarray(to_select,dtype=int)
 
     def sample_train(self, num_train):
         train_targets = random.sample(self.train_targets, num_train)
-        return self.select_targets(train_targets)
+        train_x, train_y, selected_inds = self.select_targets(train_targets)
+        return train_x, train_y, selected_inds, train_targets
 
 
 class Learn():
@@ -54,10 +55,10 @@ class Learn():
 
 
     def run_grid_search(self):
-        x_test, y_test = self.data.select_targets(self.data.test_targets)
+        self.main_results.data = self.data
         for training_size in self.config.training_sizes:
             for trial in range(self.config.trials_per_size):
-                x_train, y_train = self.data.sample_train(training_size)
+                x_train, y_train, train_inds, train_targets = self.data.sample_train(training_size)
 
                 # for each estimator (ML technique)
                 for index, estimator in enumerate(self.estimators):
@@ -83,9 +84,14 @@ class Learn():
                     #TODO call add estimator results outside this loop in the training size loop not in the trial loop
                     #TODO in the trial loop, make an array of grid search objects and x_train, y_train objects, and pass that to the add estimator_results
                     #add grid_search results to main results to be further processed
-                    self.main_results.add_estimator_results(self.estimator_names[index], training_size, grid_search,
-                                                            (x_test, y_test), (x_train, y_train),
-                                                            time_to_fit, trial, self.config.trials_per_size)
+                    self.main_results.add_estimator_results(self.estimator_names[index],
+                                                            training_size,
+                                                            grid_search,
+                                                            train_inds,
+                                                            train_targets,
+                                                            time_to_fit,
+                                                            trial,
+                                                            self.config.trials_per_size)
         self.main_results.save_data()
         return self.main_results
 
@@ -128,7 +134,7 @@ class Learn():
             data.input_array = input_array
             data.output_array = output_array
             data.target_ids = target_ids
-            pickle.dump(data, open(data_file_name, 'wb'))
+            pickle.dump(data, open(data_file_name, 'wb'),pickle.HIGHEST_PROTOCOL)
         return data
 
 

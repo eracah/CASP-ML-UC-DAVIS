@@ -21,7 +21,7 @@ class TrainingSampleResult(object):
         -the time to do the grid search for the grid search object
         """
     #TODO: add in more time metrics to this class
-    def __init__(self, trials_per_size, test_data):
+    def __init__(self, trials_per_size):
         self.data_dict = {  'best_parameter_values': [],
                             'error_parameter_values': [],
                             'test_predicted_values': [],
@@ -29,29 +29,27 @@ class TrainingSampleResult(object):
                             'test_prediction_error': [],
                             #'train_predicted_values': [],
                             'train_prediction_error': []}
-
-        self.x_test, self.y_test = test_data
         self.grid_search_objects = []
-        self.x_trains = []
-        self.y_trains = []
+        self.train_inds = []
+        self.train_targets = []
         self.times_to_fit = []
         self.trials = trials_per_size
         self.count = 0
 
 
-    def add_sample_results(self, grid_search_object, train_data, time_to_fit):
+    def add_sample_results(self, grid_search_object, train_inds, train_targets, time_to_fit, data):
         self.grid_search_objects.append(grid_search_object)
-        x_train, y_train = train_data
-        self.x_trains.append(x_train)
-        self.y_trains.append(y_train)
+        self.train_inds.append(train_inds)
+        self.train_targets.append(train_targets)
         self.times_to_fit.append(time_to_fit)
         self.count += 1
+        #TODO: This is kinda weird - maybe make this a separate function call
         if self.count == self.trials:
-            self._get_performance_of_data()
+            self._get_performance_of_data(data)
             self._calc_average_of_runs()
 
 
-    def _get_performance_of_data(self):
+    def _get_performance_of_data(self,data):
 
         #just pull one trial for best parameter values and error parameter value
         #because hard to average these ones
@@ -60,17 +58,23 @@ class TrainingSampleResult(object):
 
         self.data_dict['time_to_fit'] = self.times_to_fit
         #self.data_dict['train_actual_values'] = self.y_trains
+        test_data = data.select_targets(data.test_targets)
+        x_test = test_data[0]
+        y_test = test_data[1]
         for index, grid in enumerate(self.grid_search_objects):
-
-            self.data_dict['test_predicted_values'].append(grid.best_estimator_.predict(self.x_test))
-            self.data_dict['test_actual_values'].append(self.y_test)
+            train_targets = self.train_targets[index]
+            train_data = data.select_targets(train_targets)
+            x_train = train_data[0]
+            y_train = train_data[1]
+            self.data_dict['test_predicted_values'].append(grid.best_estimator_.predict(x_test))
+            self.data_dict['test_actual_values'].append(y_test)
             self.data_dict['test_prediction_error'].append(metrics.mean_squared_error(
                                                     self.data_dict['test_predicted_values'][index],
                                                     self.data_dict['test_actual_values'][index]))
             #self.data_dict['train_predicted_values'].append(grid.best_estimator_.predict(self.x_trains[index]))
             self.data_dict['train_prediction_error'].append(metrics.mean_squared_error(
-                                                            grid.best_estimator_.predict(self.x_trains[index]),
-                                                            self.y_trains[index]))
+                                                            grid.best_estimator_.predict(x_train),
+                                                            y_train))
 
         #turn any lists of numpy arrays into a matrix with each row as one of the arrays
         for key in ('test_predicted_values', 'test_actual_values'):
@@ -95,14 +99,18 @@ class EstimatorResult(object):
         self.name = estimator_name
         self.training_sample_dict = {}
 
-    def add_training_results(self, training_size, grid_search_object, test_data, train_data, time_to_fit, trial,
-                             trials_per_size):
+    def add_training_results(self, training_size, grid_search_object, train_inds, train_targets,
+                             time_to_fit, trial,
+                             trials_per_size, data):
         #create
         if trial == 0:
-            self.training_sample_dict[training_size] = TrainingSampleResult(trials_per_size, test_data)
+            self.training_sample_dict[training_size] = TrainingSampleResult(trials_per_size)
 
-        self.training_sample_dict[training_size].add_sample_results(grid_search_object, train_data,
-                                                                    time_to_fit)
+        self.training_sample_dict[training_size].add_sample_results(grid_search_object,
+                                                                    train_inds,
+                                                                    train_targets,
+                                                                    time_to_fit,
+                                                                    data)
 
 
     def get_data(self, data_name, sizes):
@@ -117,10 +125,6 @@ class EstimatorResult(object):
                 ret[i] = self.get_data(name, sizes)
 
         return ret
-
-
-
-
 
 class MainResult(object):
     """Main results class:
@@ -144,19 +148,22 @@ class MainResult(object):
         self.path = path_to_store_results
 
 
-    def add_estimator_results(self, estimator_name, training_size, grid_search_object, test_data, train_data,
-                              time_to_fit, trial, trials_per_size):
+    def add_estimator_results(self, estimator_name, training_size, grid_search_object, train_inds,
+                              train_targets, time_to_fit, trial, trials_per_size):
         # adds training results to the EstimatorResult object for the corresponding correct estimator_name
         self.estimator_dict[estimator_name].add_training_results(training_size,
                                                                  grid_search_object,
-                                                                 test_data,
-                                                                 train_data,
-                                                                 time_to_fit, trial, trials_per_size)
+                                                                 train_inds,
+                                                                 train_targets,
+                                                                 time_to_fit,
+                                                                 trial,
+                                                                 trials_per_size,
+                                                                 self.data)
 
     #TODO: Move this outside of this class
     def save_data(self):
         with open(self.path + self.filename, 'wb') as f:
-            pickle.dump(self, f)
+            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
 
 
 
