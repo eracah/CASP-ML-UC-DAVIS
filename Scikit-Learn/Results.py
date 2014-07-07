@@ -1,19 +1,10 @@
 __author__ = 'Evan Racah'
 
 from sklearn import metrics
-from matplotlib import pyplot as plt
-import time
+
 import pickle
 import numpy as np
 from HelperFunctions import concatenate_arrays
-
-
-def array_of_dicts_to_list(array_of_dicts):
-    a = []
-    for d in array_of_dicts:
-        a.append(d.values())
-    print a
-    return a
 
 
 class TrainingSampleResult(object):

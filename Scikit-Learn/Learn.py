@@ -6,10 +6,11 @@ import numpy as np
 import glob
 import pickle
 import os.path
-
+import configs
 from sklearn.cross_validation import train_test_split
 from sklearn.grid_search import GridSearchCV
 from Results import MainResult
+
 
 
 class Data:
@@ -95,8 +96,8 @@ class Learn():
 
     @staticmethod
     def _get_data(path):
-        data_file_name = 'SavedData/data.p'
-        load_target_data = True
+        data_file_name = configs.target_data_file_name
+        load_target_data = configs.load_target_data
         if load_target_data and os.path.isfile(data_file_name):
             data = pickle.load(open(data_file_name, 'rb'))
         else:
