@@ -25,12 +25,12 @@ class Visualization(object):
 
 
     def scatter_data(self, estimators, sizes, x_name, y_name, alpha=1):
-            legend = []
-            for estimator in estimators:
-                x, y = self.results_obj.estimator_dict[estimator].get_plot_arrays(sizes, (x_name, y_name))
-                plt.scatter(x, y, c=self.new_color(), alpha=alpha)
-                legend.append(estimator + ' ' + y_name)
-            return legend
+        legend = []
+        for estimator in estimators:
+            x, y = self.results_obj.estimator_dict[estimator].get_plot_arrays(sizes, (x_name, y_name))
+            plt.scatter(x, y, c=self.new_color(), alpha=alpha)
+            legend.append(estimator + ' ' + y_name)
+        return legend
 
 
     def plot_learning_curve(self):

@@ -2,11 +2,19 @@ __author__ = 'Evan Racah'
 from Learn import Learn
 from Visualization import Visualization
 from Configs import Configs
+import os.path
 import pickle
 
+def create_main_result_file_name(configs):
+    return configs.path_to_store_results + configs.save_results_file_name
+
+def main_results_exist(configs):
+    file_name = create_main_result_file_name(configs)
+    return os.path.isfile(file_name)
 
 def recall_main_results(configs):
-    with open(configs.path_to_store_results + configs.save_results_file_name, 'rb') as f:
+    file_name = create_main_result_file_name(configs)
+    with open(file_name, 'rb') as f:
         return pickle.load(f)
 
 
@@ -21,7 +29,7 @@ def learn_main_results(configs):
 
 if __name__ == "__main__":
     configs = Configs.Configs()
-    if configs.we_learn_the_data:
+    if configs.we_learn_the_data or not main_results_exist(configs):
         main_results = learn_main_results(configs)
     else:
         main_results = recall_main_results(configs)

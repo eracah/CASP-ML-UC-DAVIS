@@ -105,7 +105,8 @@ class Learn():
         data_file_name = configs.target_data_file_name
         load_target_data = configs.load_target_data
         if load_target_data and os.path.isfile(data_file_name):
-            data = pickle.load(open(data_file_name, 'rb'))
+            with open(data_file_name, 'rb') as f:
+                data = pickle.load(f)
         else:
             # convert every target csv file to numpy matrix and split up between
             #input and output (label)
@@ -133,7 +134,8 @@ class Learn():
             data.input_array = input_array
             data.output_array = output_array
             data.target_ids = target_ids
-            pickle.dump(data, open(data_file_name, 'wb'),pickle.HIGHEST_PROTOCOL)
+            with open(data_file_name, 'wb') as f:
+                pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
         return data
 
 
