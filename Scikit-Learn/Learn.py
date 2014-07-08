@@ -1,14 +1,14 @@
 __author__ = 'Evan Racah'
 
-import time
 import random
+import time
 import numpy as np
 import glob
 import pickle
 import os.path
 from sklearn.cross_validation import train_test_split
 from sklearn.grid_search import GridSearchCV
-from Results import MainResult
+from results import MainResult
 
 
 
@@ -41,7 +41,6 @@ class Learn():
         self.config = config
 
         data = self._get_data(self.config.path_to_targets,self.config)
-
         self.data = self._get_test_and_train(data, config.test_size)
         self.estimators = config.estimators
 
