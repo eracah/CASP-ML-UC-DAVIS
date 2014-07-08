@@ -1,7 +1,7 @@
 __author__ = 'Evan Racah'
-from Learn import Learn
-from Visualization import Visualization
-from Configs import Configs
+from learn import Learn
+from visualization import Visualization
+import configs.configs as cfg
 import os.path
 import pickle
 
@@ -28,7 +28,7 @@ def learn_main_results(configs):
 
 
 if __name__ == "__main__":
-    configs = Configs.Configs()
+    configs = cfg.Configs()
     if configs.we_learn_the_data or not main_results_exist(configs):
         main_results = learn_main_results(configs)
     else:
