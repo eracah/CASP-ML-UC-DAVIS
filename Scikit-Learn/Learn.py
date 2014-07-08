@@ -8,7 +8,7 @@ import pickle
 import os.path
 from sklearn.cross_validation import train_test_split
 from sklearn.grid_search import GridSearchCV
-from results import MainResult
+from Results import MainResult
 
 
 

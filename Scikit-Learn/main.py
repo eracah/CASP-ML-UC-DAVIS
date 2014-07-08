@@ -1,7 +1,7 @@
 __author__ = 'Evan Racah'
-from learn import Learn
-from visualization import Visualization
-import configs.configs as cfg
+from Learn import Learn
+from Visualization import Visualization
+import Configs.Configs as cfg
 import os.path
 import pickle
 
