@@ -2,13 +2,13 @@ __author__ = 'Evan Racah'
 
 from matplotlib import pyplot as plt
 import math
-import configs
 import numpy as np
 class Visualization(object):
 
     def __init__(self, main_result_obj, configs):
         self.fig_number = 1
         self.results_obj = main_result_obj
+        self.configs = configs
         self.path = configs.path_to_store_graphs
         self.colors = ['r', 'b', 'g', 'y', 'k', 'm', 'c']
         self.date = configs.date_string
@@ -38,8 +38,8 @@ class Visualization(object):
         plot_string = 'Learning_Curve'
         plt.figure(self.fig_number)
         estimators = self.results_obj.estimator_names
-        l1 = self.scatter_data(estimators, configs.training_sizes, 'training_size', 'test_prediction_error')
-        l2 = self.scatter_data(estimators, configs.training_sizes, 'training_size', 'train_prediction_error')
+        l1 = self.scatter_data(estimators, self.configs.training_sizes, 'training_size', 'test_prediction_error')
+        l2 = self.scatter_data(estimators, self.configs.training_sizes, 'training_size', 'train_prediction_error')
 
 
         # add legend and other labels
@@ -56,7 +56,7 @@ class Visualization(object):
     def plot_actual_vs_predicted_curve(self):
 
         plot_string = 'Predicted_vs_Actual_Scatter'
-        sizes = configs.training_sizes
+        sizes = self.configs.training_sizes
         #for every estimator get predictions and answers at every training size
         for estimator_name in self.results_obj.estimator_names:
             plt.figure(self.fig_number)

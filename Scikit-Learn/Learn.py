@@ -6,7 +6,6 @@ import numpy as np
 import glob
 import pickle
 import os.path
-import configs
 from sklearn.cross_validation import train_test_split
 from sklearn.grid_search import GridSearchCV
 from Results import MainResult
@@ -41,7 +40,7 @@ class Learn():
     def __init__(self, config):
         self.config = config
 
-        data = self._get_data(self.config.path_to_targets)
+        data = self._get_data(self.config.path_to_targets,self.config)
 
         self.data = self._get_test_and_train(data, config.test_size)
         self.estimators = config.estimators
@@ -102,7 +101,7 @@ class Learn():
         return data
 
     @staticmethod
-    def _get_data(path):
+    def _get_data(path,configs):
         data_file_name = configs.target_data_file_name
         load_target_data = configs.load_target_data
         if load_target_data and os.path.isfile(data_file_name):
