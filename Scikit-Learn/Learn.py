@@ -89,9 +89,15 @@ class Learn():
                                                             train_targets,
                                                             time_to_fit,
                                                             trial,
+<<<<<<< HEAD
                                                              self.config.trials_per_size)
         if self.config.save_the_results:
             self.main_results.save_data()
+=======
+                                                            self.config.trials_per_size)
+        self.main_results.configs = self.config
+        self.main_results.save_data()
+>>>>>>> 62b845dfb6c7c2f316e4688bda1669c3ce95d9b6
         return self.main_results
 
     @staticmethod

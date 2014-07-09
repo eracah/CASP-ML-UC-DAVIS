@@ -26,9 +26,8 @@ class TrainingSampleResult(object):
                             'error_parameter_values': [],
                             'test_predicted_values': [],
                             'test_actual_values': [],
-                            'test_prediction_error': [],
-                            #'train_predicted_values': [],
-                            'train_prediction_error': []}
+                            'train_predicted_values': [],
+                            'train_actual_values': []}
         self.grid_search_objects = []
         self.train_inds = []
         self.train_targets = []
@@ -45,11 +44,24 @@ class TrainingSampleResult(object):
         self.count += 1
         #TODO: This is kinda weird - maybe make this a separate function call
         if self.count == self.trials:
-            self._get_performance_of_data(data)
-            self._calc_average_of_runs()
+            self._generate_predictions(data)
 
+    def generate_performance_results(self, data, configs):
+        train_perf = np.ndarray(len(self.grid_search_objects))
+        test_perf = np.ndarray(len(self.grid_search_objects))
+        for index, grid in enumerate(self.grid_search_objects):
+            # train_targets = self.train_targets[index]
+            # test_targets = self.test_targets[index]
+            train_predicted = self.data_dict['train_predicted_values'][index]
+            train_actual = self.data_dict['train_actual_values'][index]
+            test_predicted = self.data_dict['test_predicted_values'][index]
+            test_actual = self.data_dict['test_actual_values'][index]
+            train_perf[index] = metrics.mean_squared_error(train_predicted,train_actual)
+            test_perf[index] = metrics.mean_squared_error(test_predicted,test_actual)
+        self.data_dict['train_error'] = train_perf
+        self.data_dict['test_error'] = test_perf
 
-    def _get_performance_of_data(self,data):
+    def _generate_predictions(self,data):
 
         #just pull one trial for best parameter values and error parameter value
         #because hard to average these ones
@@ -61,32 +73,20 @@ class TrainingSampleResult(object):
         test_data = data.select_targets(data.test_targets)
         x_test = test_data[0]
         y_test = test_data[1]
+        self.data_dict['test_predicted_values'] = []
+        self.data_dict['test_actual_values'] = []
+        self.data_dict['train_predicted_values'] = []
+        self.data_dict['train_actual_values'] = []
         for index, grid in enumerate(self.grid_search_objects):
             train_targets = self.train_targets[index]
             train_data = data.select_targets(train_targets)
             x_train = train_data[0]
             y_train = train_data[1]
+
             self.data_dict['test_predicted_values'].append(grid.best_estimator_.predict(x_test))
             self.data_dict['test_actual_values'].append(y_test)
-            self.data_dict['test_prediction_error'].append(metrics.mean_squared_error(
-                                                    self.data_dict['test_predicted_values'][index],
-                                                    self.data_dict['test_actual_values'][index]))
-            #self.data_dict['train_predicted_values'].append(grid.best_estimator_.predict(self.x_trains[index]))
-            self.data_dict['train_prediction_error'].append(metrics.mean_squared_error(
-                                                            grid.best_estimator_.predict(x_train),
-                                                            y_train))
-
-        #turn any lists of numpy arrays into a matrix with each row as one of the arrays
-        for key in ('test_predicted_values', 'test_actual_values'):
-            self.data_dict[key] = concatenate_arrays(range(self.trials), [self.data_dict[key]])
-
-
-
-    def _calc_average_of_runs(self):
-        for key in self.data_dict.keys():
-            if not (key =='best_parameter_values' or key =='error_parameter_values'):
-                self.data_dict[key] = np.mean(self.data_dict[key], axis=0)
-
+            self.data_dict['train_predicted_values'].append(grid.best_estimator_.predict(x_train))
+            self.data_dict['train_actual_values'].append(y_train)
 
 class EstimatorResult(object):
     """Estimator Results Class:
@@ -102,7 +102,6 @@ class EstimatorResult(object):
     def add_training_results(self, training_size, grid_search_object, train_inds, train_targets,
                              time_to_fit, trial,
                              trials_per_size, data):
-        #create
         if trial == 0:
             self.training_sample_dict[training_size] = TrainingSampleResult(trials_per_size)
 
@@ -113,8 +112,10 @@ class EstimatorResult(object):
                                                                     data)
 
 
-    def get_data(self, data_name, sizes):
-        return [obj.data_dict[data_name] for obj in [self.training_sample_dict[size] for size in sizes]]
+    def get_aggregated_data(self, data_name, sizes):
+        means = [obj.data_dict[data_name].mean() for obj in [self.training_sample_dict[size] for size in sizes]]
+        vars = [obj.data_dict[data_name].var() for obj in [self.training_sample_dict[size] for size in sizes]]
+        return means, vars
 
     def get_plot_arrays(self, sizes, names):
         ret = len(names)*[0]
@@ -122,9 +123,13 @@ class EstimatorResult(object):
             if name == 'training_size':
                 ret[i] = sizes
             else:
-                ret[i] = self.get_data(name, sizes)
-
+                means, vars = self.get_aggregated_data(name, sizes)
+                ret[i] = means
         return ret
+    
+    def generate_performance_results(self, data, configs):
+        for training_sample_results in self.training_sample_dict.itervalues():
+           training_sample_results.generate_performance_results(data,configs)
 
 class MainResult(object):
     """Main results class:
@@ -146,6 +151,11 @@ class MainResult(object):
 
         self.filename = file_name
         self.path = path_to_store_results
+
+    def generate_performance_results(self):
+        data = self.data
+        for estimator_results in self.estimator_dict.itervalues():
+            estimator_results.generate_performance_results(data, self.configs)
 
 
     def add_estimator_results(self, estimator_name, training_size, grid_search_object, train_inds,
