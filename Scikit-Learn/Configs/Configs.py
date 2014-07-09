@@ -34,6 +34,7 @@ class Configs:
         self.we_learn_the_data = True
         self.show_plots = True
         self.load_target_data = False
+        self.save_the_results = True
 
         #Try to apply local Configs
         if imported_override:
