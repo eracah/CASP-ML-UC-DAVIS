@@ -11,10 +11,19 @@ from sklearn.grid_search import GridSearchCV
 from Results import MainResult
 
 
+# Version number to prevent loading out of data data
+DATA_VERSION = 1
 
 class Data:
     def __init__(self):
+        self._version = DATA_VERSION
         pass
+
+    def assert_version(self):
+        assert self._version == DATA_VERSION
+
+    def is_correct_version(self):
+        return self._version == DATA_VERSION
 
     def get_targets_array(self):
         num_targets = max(self.target_ids)
@@ -24,7 +33,8 @@ class Data:
     def select_targets(self, targets):
         to_select = np.ndarray(0, dtype=int)
         for t in targets:
-            inds, unused = (self.target_ids == t).nonzero()
+            inds = (self.target_ids == t).nonzero()
+            inds = inds[0]
             to_select = np.concatenate((to_select, inds))
         x_targets = self.input_array[to_select, :]
         y_targets = self.output_array[to_select]
@@ -113,20 +123,22 @@ class Learn():
     def _get_data(path,configs):
         data_file_name = configs.target_data_file_name
         load_target_data = configs.load_target_data
-        if load_target_data and os.path.isfile(data_file_name):
+        data = []
+        file_exists = os.path.isfile(data_file_name)
+        if load_target_data and file_exists:
             with open(data_file_name, 'rb') as f:
                 data = pickle.load(f)
-        else:
+        if not load_target_data or not file_exists or not data.is_correct_version():
             # convert every target csv file to numpy matrix and split up between
             #input and output (label)
             target_files = glob.glob(path + '*.csv')
             # preallocate python lists
             data = Data()
             input_dim = 68
-            target_id_counter = 0
+            target_id_counter = 1
             input_array = np.zeros((0, input_dim))
             output_array = np.zeros(0)
-            target_ids = np.zeros((0, 1))
+            target_ids = np.zeros(0,dtype=int)
             for target_file in target_files:
                 # all target files of form target_number.csv, so
                 #this strips the .csv to get the number as a string and then makes it an int
@@ -137,14 +149,15 @@ class Learn():
 
                 num_models = target.shape[0]
                 input_array = np.concatenate((input_array, target[:, 0:-1]))
-                output_array = np.concatenate((output_array, target_id_counter * target[:, -1]))
-                target_ids = np.concatenate((target_ids, target_id_counter * np.ones((num_models, 1))))
+                output_array = np.concatenate((output_array, target[:, -1]))
+                target_ids = np.concatenate((target_ids, target_id_counter * np.ones(num_models,dtype=int)))
                 target_id_counter += 1
             data.input_array = input_array
             data.output_array = output_array
             data.target_ids = target_ids
             with open(data_file_name, 'wb') as f:
                 pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
+        data.assert_version()
         return data
 
 
