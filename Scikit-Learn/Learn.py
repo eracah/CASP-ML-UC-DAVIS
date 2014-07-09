@@ -90,6 +90,7 @@ class Learn():
                                                             time_to_fit,
                                                             trial,
                                                             self.config.trials_per_size)
+        self.main_results.configs = self.config
         self.main_results.save_data()
         return self.main_results
 
