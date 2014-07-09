@@ -34,7 +34,7 @@ if __name__ == "__main__":
     else:
         main_results = recall_main_results(configs)
 
-    viz = Visualization(main_results)
+    viz = Visualization(main_results, configs)
     viz.plot_all()
 
     if configs.show_plots:

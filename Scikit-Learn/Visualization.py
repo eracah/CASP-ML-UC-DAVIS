@@ -5,14 +5,15 @@ import math
 import numpy as np
 class Visualization(object):
 
-    def __init__(self, main_result_obj):
+    def __init__(self, main_result_obj, configs):
         self.fig_number = 1
         self.results_obj = main_result_obj
-        self.configs = main_result_obj.configs
+        self.configs = configs
         self.path = self.configs.path_to_store_graphs
         self.colors = ['r', 'b', 'g', 'y', 'k', 'm', 'c']
         self.date = self.configs.date_string
         self.color_index = 0
+        self.results_obj.configs.loss_function = self.configs.loss_function
         self.results_obj.generate_performance_results()
 
     def plot_all(self):
@@ -25,12 +26,15 @@ class Visualization(object):
         return col
 
 
-    def scatter_data(self, estimators, sizes, x_name, y_name, alpha=1):
+    def scatter_data(self, estimators, sizes, x_name, y_name, alpha=1,do_scatter_plot=False):
         legend = []
         for estimator in estimators:
             estimator_results = self.results_obj.estimator_dict[estimator]
             x, y = estimator_results.get_plot_arrays(sizes, (x_name, y_name))
-            plt.scatter(x, y, c=self.new_color(), alpha=alpha)
+            if do_scatter_plot:
+                plt.scatter(x, y, c=self.new_color(), alpha=alpha)
+            else:
+                plt.plot(x, y, c=self.new_color(), alpha=alpha,lw='5')
             legend.append(estimator + ' ' + y_name)
         return legend
 
@@ -40,8 +44,9 @@ class Visualization(object):
         plot_string = 'Learning_Curve'
         plt.figure(self.fig_number)
         estimators = self.results_obj.estimator_names
-        l1 = self.scatter_data(estimators, self.configs.training_sizes, 'training_size', 'test_error')
-        l2 = self.scatter_data(estimators, self.configs.training_sizes, 'training_size', 'train_error')
+        training_sizes = self.results_obj.configs.training_sizes
+        l1 = self.scatter_data(estimators, training_sizes, 'training_size', 'test_error')
+        l2 = self.scatter_data(estimators, training_sizes, 'training_size', 'train_error')
 
 
         # add legend and other labels
@@ -58,7 +63,7 @@ class Visualization(object):
     def plot_actual_vs_predicted_curve(self):
         #TODO: This doesn't work anymore.
         plot_string = 'Predicted_vs_Actual_Scatter'
-        sizes = self.configs.training_sizes
+        sizes = self.result_obj.configs.training_sizes
         #for every estimator get predictions and answers at every training size
         for estimator_name in self.results_obj.estimator_names:
             plt.figure(self.fig_number)
@@ -66,7 +71,8 @@ class Visualization(object):
                 #get correct subplot
                 rows_of_subplot = math.ceil(math.sqrt(len(sizes)))
                 plt.subplot(rows_of_subplot*100 + rows_of_subplot*10 + i)
-                self.scatter_data([estimator_name], [size], 'test_actual_values', 'test_predicted_values',alpha=0.01)
+                self.scatter_data([estimator_name], [size], 'test_actual_values', 'test_predicted_values',
+                                  alpha=0.01, do_scatter_plot=True)
                 x = np.linspace(0.0, 1.0, 1000)
                 plt.plot(x, x, color=self.new_color())
 

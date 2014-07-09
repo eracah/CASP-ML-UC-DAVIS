@@ -7,8 +7,11 @@ import numpy as np
 import time
 from math import ceil
 from Configs.Configs import Configs
+import LossFunction
 from HelperFunctions import concatenate_arrays
 
+class FoldData(object):
+    pass
 
 class TrainingSampleResult(object):
     """Class that acts sort of like a struct for each estimator/training size combo
@@ -26,74 +29,58 @@ class TrainingSampleResult(object):
     #TODO: add in more time metrics to this class
     def __init__(self, trials_per_size):
         self.configs = Configs()
-        self.data_dict = {  'best_parameter_values': [],
-                            'error_parameter_values': [],
-                            'test_predicted_values': [],
-                            'test_actual_values': [],
-                            'train_predicted_values': [],
-                            'train_actual_values': []}
-        self.grid_search_objects = []
-        self.train_inds = []
-        self.train_targets = []
-        self.times_to_fit = []
+        self.fold_data = []
         self.trials = trials_per_size
         self.count = 0
 
 
-    def add_sample_results(self, grid_search_object, train_inds, train_targets, time_to_fit, data):
-        self.grid_search_objects.append(grid_search_object)
-        self.train_inds.append(train_inds)
-        self.train_targets.append(train_targets)
-        self.times_to_fit.append(time_to_fit)
+    def add_sample_results(self, fold_data, data):
+        self.fold_data.append(fold_data)
         self.count += 1
         #TODO: This is kinda weird - maybe make this a separate function call
         if self.count == self.trials:
             self._generate_predictions(data)
 
     def generate_performance_results(self, data, configs):
-        train_perf = np.ndarray(len(self.grid_search_objects))
-        test_perf = np.ndarray(len(self.grid_search_objects))
-        for index, grid in enumerate(self.grid_search_objects):
+        num_folds = len(self.fold_data)
+        train_perf = np.ndarray(num_folds)
+        test_perf = np.ndarray(num_folds)
+        for index, fold in enumerate(self.fold_data):
             # train_targets = self.train_targets[index]
             # test_targets = self.test_targets[index]
-            train_predicted = self.data_dict['train_predicted_values'][index]
-            train_actual = self.data_dict['train_actual_values'][index]
-            test_predicted = self.data_dict['test_predicted_values'][index]
-            test_actual = self.data_dict['test_actual_values'][index]
-            train_perf[index] = metrics.mean_squared_error(train_predicted,train_actual)
-            test_perf[index] = metrics.mean_squared_error(test_predicted,test_actual)
-        self.data_dict['train_error'] = train_perf
-        self.data_dict['test_error'] = test_perf
+            train_predicted = fold.train_predicted_values
+            train_actual = fold.train_actual_values
+            test_predicted = fold.test_predicted_values
+            test_actual = fold.test_actual_values
+            loss_function = configs.loss_function
+            train_target_ids = data.get_target_ids(fold.train_inds)
+            test_target_ids = data.get_target_ids(fold.test_inds)
+            train_perf[index] = LossFunction.compute_loss_function(train_predicted,
+                                                                   train_actual,
+                                                                   train_target_ids,
+                                                                   loss_function)
+            test_perf[index] = LossFunction.compute_loss_function(test_predicted,
+                                                                  test_actual,
+                                                                  test_target_ids,
+                                                                  loss_function)
+        self.train_error = train_perf
+        self.test_error = test_perf
 
     def _generate_predictions(self,data):
-
-        #just pull one trial for best parameter values and error parameter value
-        #because hard to average these ones
-        self.data_dict['best_parameter_values'].append(self.grid_search_objects[0].best_estimator_.get_params())
-        self.data_dict['error_parameter_values'].append(self.grid_search_objects[0].grid_scores_)
-
-        self.data_dict['time_to_fit'] = self.times_to_fit
         #self.data_dict['train_actual_values'] = self.y_trains
-        test_data = data.select_targets(data.test_targets)
-        x_test = test_data[0]
-        y_test = test_data[1]
+        x_test, y_test, test_inds = data.select_targets(data.test_targets)
 
-        #TODO: preallocate arrays for these
-
-        self.data_dict['test_predicted_values'] = np.zeros((self.trials, x_test.shape[0],))
-        self.data_dict['test_actual_values'] = self.trials*[y_test]
-        self.data_dict['train_predicted_values'] = []
-        self.data_dict['train_actual_values'] = []
-        for index, grid in enumerate(self.grid_search_objects):
-            train_targets = self.train_targets[index]
+        for index, fold in enumerate(self.fold_data):
+            train_targets = fold.train_targets
             train_data = data.select_targets(train_targets)
             x_train = train_data[0]
             y_train = train_data[1]
 
-
-            self.data_dict['test_predicted_values'][index]= grid.best_estimator_.predict(x_test)
-            self.data_dict['train_predicted_values'].append(grid.best_estimator_.predict(x_train))
-            self.data_dict['train_actual_values'].append(y_train)
+            fold.test_predicted_values = fold.grid_search_object.best_estimator_.predict(x_test)
+            fold.train_predicted_values = fold.grid_search_object.best_estimator_.predict(x_train)
+            fold.train_actual_values = y_train
+            fold.test_actual_values = y_test
+            fold.test_inds = test_inds
         
 
 class EstimatorResult(object):
@@ -107,22 +94,19 @@ class EstimatorResult(object):
         self.name = estimator_name
         self.training_sample_dict = {}
 
-    def add_training_results(self, training_size, grid_search_object, train_inds, train_targets,
-                             time_to_fit, trial,
+    def add_training_results(self, training_size, fold_data, trial,
                              trials_per_size, data):
         if trial == 0:
             self.training_sample_dict[training_size] = TrainingSampleResult(trials_per_size)
 
-        self.training_sample_dict[training_size].add_sample_results(grid_search_object,
-                                                                    train_inds,
-                                                                    train_targets,
-                                                                    time_to_fit,
+        self.training_sample_dict[training_size].add_sample_results(fold_data,
                                                                     data)
 
 
     def get_aggregated_data(self, data_name, sizes):
-        means = [obj.data_dict[data_name].mean() for obj in [self.training_sample_dict[size] for size in sizes]]
-        vars = [obj.data_dict[data_name].var() for obj in [self.training_sample_dict[size] for size in sizes]]
+        training_sample_results = [self.training_sample_dict[size] for size in sizes]
+        means = [getattr(obj,data_name).mean() for obj in training_sample_results]
+        vars = [getattr(obj,data_name).var() for obj in training_sample_results]
         return means, vars
 
     def get_plot_arrays(self, sizes, names):
@@ -137,7 +121,7 @@ class EstimatorResult(object):
     
     def generate_performance_results(self, data, configs):
         for training_sample_results in self.training_sample_dict.itervalues():
-           training_sample_results.generate_performance_results(data,configs)
+           training_sample_results.generate_performance_results(data, configs)
 
 class MainResult(object):
     """Main results class:
@@ -169,11 +153,15 @@ class MainResult(object):
     def add_estimator_results(self, estimator_name, training_size, grid_search_object, train_inds,
                               train_targets, time_to_fit, trial, trials_per_size):
         # adds training results to the EstimatorResult object for the corresponding correct estimator_name
+        fold_data = FoldData()
+        fold_data.training_size = training_size
+        fold_data.grid_search_object = grid_search_object
+        fold_data.train_inds = train_inds
+        fold_data.train_targets = train_targets
+        fold_data.time_to_fit = time_to_fit
+
         self.estimator_dict[estimator_name].add_training_results(training_size,
-                                                                 grid_search_object,
-                                                                 train_inds,
-                                                                 train_targets,
-                                                                 time_to_fit,
+                                                                 fold_data,
                                                                  trial,
                                                                  trials_per_size,
                                                                  self.data)

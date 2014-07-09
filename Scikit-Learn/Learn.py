@@ -35,6 +35,9 @@ class Data:
         train_x, train_y, selected_inds = self.select_targets(train_targets)
         return train_x, train_y, selected_inds, train_targets
 
+    def get_target_ids(self, inds):
+        return self.target_ids[inds]
+
 
 class Learn():
     def __init__(self, config):
