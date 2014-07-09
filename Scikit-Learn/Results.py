@@ -4,6 +4,9 @@ from sklearn import metrics
 
 import pickle
 import numpy as np
+import time
+from math import ceil
+from Configs.Configs import Configs
 from HelperFunctions import concatenate_arrays
 
 
@@ -22,6 +25,7 @@ class TrainingSampleResult(object):
         """
     #TODO: add in more time metrics to this class
     def __init__(self, trials_per_size):
+        self.configs = Configs()
         self.data_dict = {  'best_parameter_values': [],
                             'error_parameter_values': [],
                             'test_predicted_values': [],
@@ -73,8 +77,11 @@ class TrainingSampleResult(object):
         test_data = data.select_targets(data.test_targets)
         x_test = test_data[0]
         y_test = test_data[1]
-        self.data_dict['test_predicted_values'] = []
-        self.data_dict['test_actual_values'] = []
+
+        #TODO: preallocate arrays for these
+
+        self.data_dict['test_predicted_values'] = np.zeros((self.trials, x_test.shape[0],))
+        self.data_dict['test_actual_values'] = self.trials*[y_test]
         self.data_dict['train_predicted_values'] = []
         self.data_dict['train_actual_values'] = []
         for index, grid in enumerate(self.grid_search_objects):
@@ -83,10 +90,11 @@ class TrainingSampleResult(object):
             x_train = train_data[0]
             y_train = train_data[1]
 
-            self.data_dict['test_predicted_values'].append(grid.best_estimator_.predict(x_test))
-            self.data_dict['test_actual_values'].append(y_test)
+
+            self.data_dict['test_predicted_values'][index]= grid.best_estimator_.predict(x_test)
             self.data_dict['train_predicted_values'].append(grid.best_estimator_.predict(x_train))
             self.data_dict['train_actual_values'].append(y_train)
+        
 
 class EstimatorResult(object):
     """Estimator Results Class:
