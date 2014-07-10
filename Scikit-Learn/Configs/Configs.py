@@ -2,6 +2,7 @@ __author__ = 'Evan Racah'
 
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
+from LossFunction import LossFunction
 import time
 
 #Try to import OverrideConfigs.  Used to apply local overrides without modifying this file.
@@ -35,7 +36,7 @@ class Configs:
         self.show_plots = True
         self.load_target_data = False
         self.save_the_results = True
-        self.loss_function = 'mean_squared_error'
+        self.results_loss_function = LossFunction.MEAN_SQUARED_ERROR
         #Try to apply local Configs
         if imported_override:
             OverrideConfigs.apply_overrides(self)

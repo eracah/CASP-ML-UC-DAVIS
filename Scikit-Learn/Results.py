@@ -7,7 +7,7 @@ import numpy as np
 import time
 from math import ceil
 from Configs.Configs import Configs
-import LossFunction
+from LossFunction import LossFunction
 from HelperFunctions import concatenate_arrays
 
 class FoldData(object):
@@ -52,17 +52,17 @@ class TrainingSampleResult(object):
             train_actual = fold.train_actual_values
             test_predicted = fold.test_predicted_values
             test_actual = fold.test_actual_values
-            loss_function = configs.loss_function
+            results_loss_function = configs.results_loss_function
             train_target_ids = data.get_target_ids(fold.train_inds)
             test_target_ids = data.get_target_ids(fold.test_inds)
             train_perf[index] = LossFunction.compute_loss_function(train_predicted,
                                                                    train_actual,
                                                                    train_target_ids,
-                                                                   loss_function)
+                                                                   results_loss_function)
             test_perf[index] = LossFunction.compute_loss_function(test_predicted,
                                                                   test_actual,
                                                                   test_target_ids,
-                                                                  loss_function)
+                                                                  results_loss_function)
         self.train_error = train_perf
         self.test_error = test_perf
 

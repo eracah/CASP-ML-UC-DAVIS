@@ -3,6 +3,7 @@ __author__ = 'Evan Racah'
 from matplotlib import pyplot as plt
 import math
 import numpy as np
+from LossFunction import LossFunction
 class Visualization(object):
 
     def __init__(self, main_result_obj, configs):
@@ -13,7 +14,10 @@ class Visualization(object):
         self.colors = ['r', 'b', 'g', 'y', 'k', 'm', 'c']
         self.date = self.configs.date_string
         self.color_index = 0
-        self.results_obj.configs.loss_function = self.configs.loss_function
+
+        # Kinda hacky.  This makes it so we can compute and visualize different loss functions
+        # I think the way to fix this is to have separate configs for visualization than for training
+        self.results_obj.configs.results_loss_function = self.configs.results_loss_function
         self.results_obj.generate_performance_results()
 
     def plot_all(self):
@@ -52,7 +56,7 @@ class Visualization(object):
         # add legend and other labels
         self.set_plot_captions(plot_string,
                                'Training Size (Number of Targets)',
-                               'Mean Squared Error',
+                               LossFunction.get_loss_function_display_name(self.configs.results_loss_function),
                                legend_list=l1+l2)
 
         plt.savefig(self.path + '/' + self.date + '_' + plot_string + '.jpg')
