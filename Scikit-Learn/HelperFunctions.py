@@ -40,3 +40,11 @@ def concatenate_arrays(listOfIndices, sources):
                 destinations[Index] = np.concatenate((destinations[Index], sources[Index][targetIndex]))
     return destinations
 
+def save_object(object, file_name):
+    with open(file_name, 'wb') as f:
+        pickle.dump(object, f, pickle.HIGHEST_PROTOCOL)
+
+def load_object(file_name):
+    with open(file_name, 'rb') as f:
+        data = pickle.load(f)
+    return data

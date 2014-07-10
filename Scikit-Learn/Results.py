@@ -81,6 +81,10 @@ class TrainingSampleResult(object):
             fold.train_actual_values = y_train
             fold.test_actual_values = y_test
             fold.test_inds = test_inds
+
+            # Hacky solution to result file size - the grid search object is very large
+            # Better to just not make grid_search_object an attribute in the first place
+            del fold.grid_search_object
         
 
 class EstimatorResult(object):

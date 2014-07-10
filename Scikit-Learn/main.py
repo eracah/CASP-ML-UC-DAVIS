@@ -4,6 +4,7 @@ from Visualization import Visualization
 import Configs.Configs as cfg
 import os.path
 import pickle
+import HelperFunctions
 
 def create_main_result_file_name(configs):
     return configs.path_to_store_results + configs.save_results_file_name
@@ -31,8 +32,10 @@ if __name__ == "__main__":
     configs = cfg.Configs()
     if configs.we_learn_the_data or not main_results_exist(configs):
         main_results = learn_main_results(configs)
+        print('Done Training!')
     else:
         main_results = recall_main_results(configs)
+        print('Done Loading Results!')
 
     viz = Visualization(main_results, configs)
     viz.plot_all()
