@@ -32,6 +32,8 @@ class TrainingSampleResult(object):
         self.fold_data = []
         self.trials = trials_per_size
         self.count = 0
+        self.test_error = 0
+        self.train_error = 0
 
 
     def add_sample_results(self, fold_data, data):
@@ -43,15 +45,19 @@ class TrainingSampleResult(object):
 
     def generate_performance_results(self, data, configs):
         num_folds = len(self.fold_data)
+        num_pred = len(self.fold_data[0].test_predicted_values)
+        num_actual = len(self.fold_data[0].test_actual_values)
         train_perf = np.ndarray(num_folds)
         test_perf = np.ndarray(num_folds)
+        test_predicted = np.ones((num_folds,num_pred,))
+        test_actual = np.ones((num_folds,num_actual,))
         for index, fold in enumerate(self.fold_data):
             # train_targets = self.train_targets[index]
             # test_targets = self.test_targets[index]
             train_predicted = fold.train_predicted_values
             train_actual = fold.train_actual_values
-            test_predicted = fold.test_predicted_values
-            test_actual = fold.test_actual_values
+            test_predicted[index] = fold.test_predicted_values
+            test_actual[index] = fold.test_actual_values
             results_loss_function = configs.results_loss_function
             train_target_ids = data.get_target_ids(fold.train_inds)
             test_target_ids = data.get_target_ids(fold.test_inds)
@@ -63,6 +69,10 @@ class TrainingSampleResult(object):
                                                                   test_actual,
                                                                   test_target_ids,
                                                                   results_loss_function)
+        self.test_actual = test_actual
+        #self.train_actual = train_actual
+        self.test_predicted = test_predicted
+        #self.train_predicted = train_predicted
         self.train_error = train_perf
         self.test_error = test_perf
 
@@ -109,9 +119,10 @@ class EstimatorResult(object):
 
     def get_aggregated_data(self, data_name, sizes):
         training_sample_results = [self.training_sample_dict[size] for size in sizes]
-        means = [getattr(obj,data_name).mean() for obj in training_sample_results]
-        vars = [getattr(obj,data_name).var() for obj in training_sample_results]
-        return means, vars
+        #must have axis=0 so we average arrays of arrays and get out an array instead of one value
+        means = [getattr(obj, data_name).mean(axis=0) for obj in training_sample_results]
+        variances = [getattr(obj, data_name).var() for obj in training_sample_results]
+        return means, variances
 
     def get_plot_arrays(self, sizes, names):
         ret = len(names)*[0]

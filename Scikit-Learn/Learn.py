@@ -56,10 +56,7 @@ class Learn():
         data = self._get_data(self.config.path_to_targets,self.config)
         self.data = self._get_test_and_train(data, config.test_size)
         self.estimators = config.estimators
-
-        # take the 'estimator_name' from 'estimator_name()' ie 'KNeighborsRegressor()' becomes 'KNeighborsRegressor'
-        self.estimator_names = [repr(est).split('(')[0] for est in self.estimators]
-
+        self.estimator_names = config.estimator_names
         # instantiate a main result object
         self.main_results = MainResult(self.estimator_names, self.config.path_to_store_results,
                                        self.config.save_results_file_name)
@@ -92,8 +89,7 @@ class Learn():
                     print 'search time ', search_time
 
 
-                    #TODO call add estimator results outside this loop in the training size loop not in the trial loop
-                    #TODO in the trial loop, make an array of grid search objects and x_train, y_train objects, and pass that to the add estimator_results
+
                     #add grid_search results to main results to be further processed
                     self.main_results.add_estimator_results(self.estimator_names[index],
                                                             training_size,

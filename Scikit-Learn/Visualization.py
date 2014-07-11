@@ -11,7 +11,7 @@ class Visualization(object):
         self.results_obj = main_result_obj
         self.configs = configs
         self.path = self.configs.path_to_store_graphs
-        self.colors = ['r', 'b', 'g', 'y', 'k', 'm', 'c']
+        self.colors = ['r', 'g', 'y', 'k', 'm', 'c']
         self.date = self.configs.date_string
         self.color_index = 0
 
@@ -22,7 +22,7 @@ class Visualization(object):
 
     def plot_all(self):
         self.plot_learning_curve()
-        #self.plot_actual_vs_predicted_curve()
+        self.plot_actual_vs_predicted_curve()
 
     def new_color(self):
         col = self.colors[self.color_index % len(self.colors)]
@@ -30,7 +30,7 @@ class Visualization(object):
         return col
 
 
-    def scatter_data(self, estimators, sizes, x_name, y_name, alpha=1,do_scatter_plot=False):
+    def scatter_data(self, estimators, sizes, x_name, y_name, alpha=1, do_scatter_plot=False):
         legend = []
         for estimator in estimators:
             estimator_results = self.results_obj.estimator_dict[estimator]
@@ -38,7 +38,7 @@ class Visualization(object):
             if do_scatter_plot:
                 plt.scatter(x, y, c=self.new_color(), alpha=alpha)
             else:
-                plt.plot(x, y, c=self.new_color(), alpha=alpha,lw='5')
+                plt.plot(x, y, c=self.new_color(), alpha=alpha,lw=5)
             legend.append(estimator + ' ' + y_name)
         return legend
 
@@ -67,18 +67,18 @@ class Visualization(object):
     def plot_actual_vs_predicted_curve(self):
         #TODO: This doesn't work anymore.
         plot_string = 'Predicted_vs_Actual_Scatter'
-        sizes = self.result_obj.configs.training_sizes
-        #for every estimator get predictions and answers at every training size
+        sizes = self.results_obj.configs.training_sizes
         for estimator_name in self.results_obj.estimator_names:
             plt.figure(self.fig_number)
             for i, size in enumerate(sizes):
-                #get correct subplot
-                rows_of_subplot = math.ceil(math.sqrt(len(sizes)))
-                plt.subplot(rows_of_subplot*100 + rows_of_subplot*10 + i)
-                self.scatter_data([estimator_name], [size], 'test_actual_values', 'test_predicted_values',
-                                  alpha=0.01, do_scatter_plot=True)
+
+                rows_of_subplot = len(sizes)
+                plt.subplot(rows_of_subplot*100 + 4*10 + i)
+                self.scatter_data([estimator_name], [size], 'test_actual', 'test_predicted',
+                                  alpha=1, do_scatter_plot=True)
+
                 x = np.linspace(0.0, 1.0, 1000)
-                plt.plot(x, x, color=self.new_color())
+                plt.plot(x, x, color='b',linestyle='--')
 
                 title_string = estimator_name[0:3] + ' and size of ' + str(size)
                 self.set_plot_captions(title_string, 'Actual Value', 'Predicted Value')
