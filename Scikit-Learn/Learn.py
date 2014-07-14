@@ -6,9 +6,13 @@ import numpy as np
 import glob
 import pickle
 import os.path
+import copy
+from sklearn import cross_validation
 from sklearn.cross_validation import train_test_split
 from sklearn.grid_search import GridSearchCV
+from sklearn.grid_search import ParameterGrid
 from Results import MainResult
+from LossFunction import LossFunction
 
 
 # Version number to prevent loading out of data data
@@ -38,15 +42,20 @@ class Data:
             to_select = np.concatenate((to_select, inds))
         x_targets = self.input_array[to_select, :]
         y_targets = self.output_array[to_select]
-        return x_targets, y_targets, np.asarray(to_select,dtype=int)
+        to_select = np.asarray(to_select,dtype=int)
+        targets_ids = self.get_target_ids(to_select)
+        return x_targets, y_targets, to_select, targets_ids
 
     def sample_train(self, num_train):
         train_targets = random.sample(self.train_targets, num_train)
-        train_x, train_y, selected_inds = self.select_targets(train_targets)
+        train_x, train_y, selected_inds, _ = self.select_targets(train_targets)
         return train_x, train_y, selected_inds, train_targets
 
     def get_target_ids(self, inds):
         return self.target_ids[inds]
+
+    def get_num_targets(self):
+        return self.train_targets.max()
 
 
 class Learn():
@@ -71,21 +80,61 @@ class Learn():
                 # for each estimator (ML technique)
                 for index, estimator in enumerate(self.estimators):
                     #instantiate grid search object
-                    grid_search = GridSearchCV(estimator, self.config.parameter_grids[index],
-                                               scoring=self.config.scoring, cv=self.config.n_folds,
-                                               n_jobs=self.config.n_cores)
-
+                    num_folds = self.config.n_folds
                     t0 = time.time()
-                    #find best fit for training data
-                    grid_search.fit(x_train, y_train)
+
+                    if not self.config.use_grid_search_cv:
+                        sampled_targets = np.asarray(list(set(train_targets)),dtype=int)
+                        kf = cross_validation.KFold(len(sampled_targets),num_folds,shuffle=True)
+
+                        params = self.config.parameter_grids[index]
+                        param_grid = list(ParameterGrid(params))
+                        cv_scores = []
+                        for i in range(len(param_grid)):
+                            cv_scores.append([])
+
+                        for train_target_indices, test_target_indices in kf:
+                            cv_train_targets = sampled_targets[train_target_indices]
+                            cv_test_targets = sampled_targets[test_target_indices]
+
+                            cv_train_x, cv_train_y, _, _ = self.data.select_targets(cv_train_targets)
+                            cv_test_x, cv_test_y, _, cv_test_target_ids = self.data.select_targets(cv_test_targets)
+
+                            for param_index, params in enumerate(param_grid):
+                                estimator.set_params(**params)
+                                estimator.fit(cv_train_x,cv_train_y)
+                                cv_test_pred = estimator.predict(cv_test_x)
+                                score = LossFunction.compute_loss_function(cv_test_pred, cv_test_y,
+                                                                           cv_test_target_ids, self.config.cv_loss_function)
+                                cv_scores[param_index].append(score)
+                                pass
+                        best_param_index = self._get_best_param_index(cv_scores)
+                        best_params = param_grid[best_param_index]
+                        best_estimator = copy.deepcopy(estimator)
+                        best_estimator.set_params(**best_params)
+                    else:
+                        grid_search = GridSearchCV(estimator, self.config.parameter_grids[index],
+                                                   scoring=self.config.scoring, cv=self.config.n_folds,
+                                                   n_jobs=self.config.n_cores)
+
+
+                        #find best fit for training data
+                        grid_search.fit(x_train, y_train)
+                        best_params = grid_search.best_params_
+
                     search_time = time.time() - t0
 
                     t0 = time.time()
                     #fit estimator with best parameters to training data
-                    grid_search.best_estimator_.fit(x_train, y_train)
+                    if not self.config.use_grid_search_cv:
+                        best_estimator.fit(x_train,y_train)
+                    else:
+                        grid_search.best_estimator_.fit(x_train, y_train)
+                        best_estimator = grid_search.best_estimator_
+
                     time_to_fit = time.time() - t0
 
-                    print 'training size: ', training_size, '. best parameter value', ': ', grid_search.best_params_, '. time_to_fit:', time_to_fit
+                    print 'training size: ', training_size, '. best parameter value', ': ', best_params, '. time_to_fit:', time_to_fit
                     print 'search time ', search_time
 
 
@@ -93,13 +142,12 @@ class Learn():
                     #add grid_search results to main results to be further processed
                     self.main_results.add_estimator_results(self.estimator_names[index],
                                                             training_size,
-                                                            grid_search,
+                                                            best_estimator,
                                                             train_inds,
                                                             train_targets,
                                                             time_to_fit,
                                                             trial,
-
-                                                             self.config.trials_per_size)
+                                                            self.config.trials_per_size)
 
 
 
@@ -108,7 +156,11 @@ class Learn():
             self.main_results.save_data()
 
         return self.main_results
-
+    def _get_best_param_index(self,all_scores):
+        mean_scores = []
+        for index, scores in enumerate(all_scores):
+            mean_scores.append(np.asarray(scores).mean())
+        return np.asarray(mean_scores).argmin()
     @staticmethod
     def _get_test_and_train(data, test_size):
         target_array = data.get_targets_array()

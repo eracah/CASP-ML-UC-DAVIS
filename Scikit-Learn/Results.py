@@ -65,8 +65,8 @@ class TrainingSampleResult(object):
                                                                    train_actual,
                                                                    train_target_ids,
                                                                    results_loss_function)
-            test_perf[index] = LossFunction.compute_loss_function(test_predicted,
-                                                                  test_actual,
+            test_perf[index] = LossFunction.compute_loss_function(test_predicted[index],
+                                                                  test_actual[index],
                                                                   test_target_ids,
                                                                   results_loss_function)
         self.test_actual = test_actual
@@ -78,23 +78,21 @@ class TrainingSampleResult(object):
 
     def _generate_predictions(self,data):
         #self.data_dict['train_actual_values'] = self.y_trains
-        x_test, y_test, test_inds = data.select_targets(data.test_targets)
+        x_test, y_test, test_inds, _ = data.select_targets(data.test_targets)
 
         for index, fold in enumerate(self.fold_data):
             train_targets = fold.train_targets
-            train_data = data.select_targets(train_targets)
-            x_train = train_data[0]
-            y_train = train_data[1]
+            x_train, y_train, _, _ = data.select_targets(train_targets)
 
-            fold.test_predicted_values = fold.grid_search_object.best_estimator_.predict(x_test)
-            fold.train_predicted_values = fold.grid_search_object.best_estimator_.predict(x_train)
+            fold.test_predicted_values = fold.estimator.predict(x_test)
+            fold.train_predicted_values = fold.estimator.predict(x_train)
             fold.train_actual_values = y_train
             fold.test_actual_values = y_test
             fold.test_inds = test_inds
 
             # Hacky solution to result file size - the grid search object is very large
-            # Better to just not make grid_search_object an attribute in the first place
-            del fold.grid_search_object
+            # Better to just not make estimator an attribute in the first place
+            del fold.estimator
         
 
 class EstimatorResult(object):
@@ -165,12 +163,12 @@ class MainResult(object):
             estimator_results.generate_performance_results(data, self.configs)
 
 
-    def add_estimator_results(self, estimator_name, training_size, grid_search_object, train_inds,
+    def add_estimator_results(self, estimator_name, training_size, estimator, train_inds,
                               train_targets, time_to_fit, trial, trials_per_size):
         # adds training results to the EstimatorResult object for the corresponding correct estimator_name
         fold_data = FoldData()
         fold_data.training_size = training_size
-        fold_data.grid_search_object = grid_search_object
+        fold_data.estimator = estimator
         fold_data.train_inds = train_inds
         fold_data.train_targets = train_targets
         fold_data.time_to_fit = time_to_fit

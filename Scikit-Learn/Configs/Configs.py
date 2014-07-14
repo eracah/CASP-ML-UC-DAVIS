@@ -35,7 +35,9 @@ class Configs:
         self.show_plots = True
         self.load_target_data = False
         self.save_the_results = True
-        self.results_loss_function = LossFunction.MEAN_SQUARED_ERROR
+        self.results_loss_function = LossFunction.PRECISION
+        self.cv_loss_function = LossFunction.PRECISION
+        self.use_grid_search_cv = False
         #Try to apply local Configs
         if imported_override:
             OverrideConfigs.apply_overrides(self)
@@ -47,23 +49,35 @@ class Configs:
         self.recall_results_file_name = self.save_results_file_name
 
 
+    def _get_name_params(self):
+        name_params = ['date_string']
+        return name_params
 
     def _generate_save_results_filename(self):
         few = 6
-        first_few_letters = slice(0, 6)
-        estimators_used_in_this_run_string = ''.join([estimator_name[first_few_letters] + '_' for estimator_name in self.estimator_names])
-        training_size_range_string = 'train:' + self._get_range_of_values_from_a_list(self.training_sizes)
-
-        list_of_parameter_name_and_value_strings = []
-        for parameter_name_values_dict in self.parameter_grids:
-            for parameter_name in parameter_name_values_dict:
-                parameter_values_list = parameter_name_values_dict[parameter_name]
-                range_of_parameter_values_string = self._get_range_of_values_from_a_list(parameter_values_list) + '_'
-                parameter_name_and_value_string = parameter_name[first_few_letters] + ':_' + range_of_parameter_values_string
-                list_of_parameter_name_and_value_strings.append(parameter_name_and_value_string)
-
-        file_string = estimators_used_in_this_run_string + ''.join(list_of_parameter_name_and_value_strings) \
-                      + training_size_range_string + '.dat'
+        delim = ','
+        name_params = self._get_name_params()
+        # first_few_letters = slice(0, 6)
+        # estimators_used_in_this_run_string = ''.join([estimator_name[first_few_letters] + '_' for estimator_name in self.estimator_names])
+        # training_size_range_string = 'train:' + self._get_range_of_values_from_a_list(self.training_sizes)
+        #
+        # list_of_parameter_name_and_value_strings = []
+        # for parameter_name_values_dict in self.parameter_grids:
+        #     for parameter_name in parameter_name_values_dict:
+        #         parameter_values_list = parameter_name_values_dict[parameter_name]
+        #         range_of_parameter_values_string = self._get_range_of_values_from_a_list(parameter_values_list) + '_'
+        #         parameter_name_and_value_string = parameter_name[first_few_letters] + delim + range_of_parameter_values_string
+        #         list_of_parameter_name_and_value_strings.append(parameter_name_and_value_string)
+        #
+        # file_string = estimators_used_in_this_run_string + ''.join(list_of_parameter_name_and_value_strings) \
+        #               + training_size_range_string + '.dat'
+        file_string = ''
+        name_params = self._get_name_params()
+        for index, param in enumerate(name_params):
+            file_string += param + '=' + getattr(self,param)
+            if index != len(name_params)-1:
+                file_string += delim
+        file_string += '.dat'
         return file_string
 
     def _get_range_of_values_from_a_list(self, the_list):

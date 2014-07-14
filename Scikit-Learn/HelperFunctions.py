@@ -40,6 +40,9 @@ def concatenate_arrays(listOfIndices, sources):
                 destinations[Index] = np.concatenate((destinations[Index], sources[Index][targetIndex]))
     return destinations
 
+def num_unique(l):
+    return len(set(l))
+
 def save_object(object, file_name):
     with open(file_name, 'wb') as f:
         pickle.dump(object, f, pickle.HIGHEST_PROTOCOL)

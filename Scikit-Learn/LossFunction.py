@@ -12,6 +12,15 @@ class LossFunction:
     PRECISION = 2
 
     @staticmethod
+    def get_loss_function_short_name(loss_function):
+        name_dictionary = {
+            LossFunction.MEAN_SQUARED_ERROR: 'MSE',
+            LossFunction.NDCG: 'NDCG',
+            LossFunction.PRECISION: 'P'
+        }
+        return name_dictionary[loss_function]
+
+    @staticmethod
     # NDCG and Precision are "1 - ..." just so they're consistent with MSE in that "Lower is better"
     def get_loss_function_display_name(loss_function):
         name_dictionary = {
@@ -93,3 +102,22 @@ class LossFunction:
         top_k = vals[:k]
         score = top_k.sum()
         return score / max_score
+
+class Scorer(object):
+    @staticmethod
+    def create_scorer(loss_function,target_ids):
+        scorer = Scorer()
+        scorer.loss_function = loss_function
+
+    def __call__(self, *args):
+        estimator = args[0]
+        X = args[1]
+        y = args[2]
+        self._compute_score(estimator,X,y)
+
+    def _compute_score(self,estimator,X,y):
+        assert False
+        y_pred = estimator.predict(X)
+        if self.loss_function == LossFunction.MEAN_SQUARED_ERROR:
+            pass
+
