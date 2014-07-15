@@ -29,16 +29,24 @@ def learn_main_results(configs):
 
 
 if __name__ == "__main__":
-    configs = cfg.Configs()
-    if configs.we_learn_the_data or not main_results_exist(configs):
-        main_results = learn_main_results(configs)
-        print('Done Training!')
-    else:
+    batch_configs = cfg.BatchConfigs.create_batch_configs()
+    # configs = cfg.Configs()
+    for configs in batch_configs.all_configs:
+        if configs.we_learn_the_data or not main_results_exist(configs):
+            learn_main_results(configs)
+            print('Done Training!')
+        else:
+            print('Results already exist')
+
+    viz_configs = cfg.VisualizationConfigs()
+    viz = Visualization(viz_configs)
+    for configs in batch_configs.all_configs:
         main_results = recall_main_results(configs)
         print('Done Loading Results!')
+        viz.add_to_learning_curve_plot(main_results)
 
-    viz = Visualization(main_results, configs)
-    viz.plot_all()
+    viz.finish_learning_curve_plot()
+    # viz.plot_all()
 
     if configs.show_plots:
         viz.show()

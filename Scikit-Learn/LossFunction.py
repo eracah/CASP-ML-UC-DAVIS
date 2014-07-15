@@ -6,10 +6,20 @@ import math
 
 
 
+
 class LossFunction:
     MEAN_SQUARED_ERROR = 0
     NDCG = 1
     PRECISION = 2
+
+    def __init__(self, loss_function_type):
+        self.loss_function_type = loss_function_type
+
+    def __str__(self):
+        return LossFunction.get_loss_function_short_name(self.loss_function_type)
+
+    def get_display_name(self):
+        return LossFunction.get_loss_function_display_name(self.loss_function_type)
 
     @staticmethod
     def get_loss_function_short_name(loss_function):

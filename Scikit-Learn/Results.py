@@ -4,11 +4,13 @@ from sklearn import metrics
 
 import pickle
 import numpy as np
+import os
 import time
 from math import ceil
 from Configs.Configs import Configs
 from LossFunction import LossFunction
 from HelperFunctions import concatenate_arrays
+from HelperFunctions import save_object
 
 class FoldData(object):
     pass
@@ -70,9 +72,9 @@ class TrainingSampleResult(object):
                                                                   test_target_ids,
                                                                   results_loss_function)
         self.test_actual = test_actual
-        #self.train_actual = train_actual
+        self.train_actual = train_actual
         self.test_predicted = test_predicted
-        #self.train_predicted = train_predicted
+        self.train_predicted = train_predicted
         self.train_error = train_perf
         self.test_error = test_perf
 
@@ -141,26 +143,21 @@ class MainResult(object):
     Contains a dictionary, which contains an EstimatorResults object for each estimator
     Also has method for plotting all estimators against each other in a learning curve"""
 
-    def __init__(self, estimator_names, path_to_store_results, file_name):
+    def __init__(self, estimator_name, path_to_store_results, file_name):
         """
 
         :type self: object
         """
-        self.estimator_dict = {}
-        self.estimator_names = estimator_names
+        self.estimator_name = estimator_name
 
-        #add an estimatorResult object for each estimator to the dictionary
-        for name in self.estimator_names:
-            #make a new key value pair, where key is the estimator and value is an EstimatorResult object
-            self.estimator_dict[name] = EstimatorResult(name)
+        self.estimator_results = EstimatorResult(estimator_name)
 
         self.filename = file_name
         self.path = path_to_store_results
 
     def generate_performance_results(self):
         data = self.data
-        for estimator_results in self.estimator_dict.itervalues():
-            estimator_results.generate_performance_results(data, self.configs)
+        self.estimator_results.generate_performance_results(data, self.configs)
 
 
     def add_estimator_results(self, estimator_name, training_size, estimator, train_inds,
@@ -173,16 +170,16 @@ class MainResult(object):
         fold_data.train_targets = train_targets
         fold_data.time_to_fit = time_to_fit
 
-        self.estimator_dict[estimator_name].add_training_results(training_size,
-                                                                 fold_data,
-                                                                 trial,
-                                                                 trials_per_size,
-                                                                 self.data)
+        self.estimator_results.add_training_results(training_size,
+                                                     fold_data,
+                                                     trial,
+                                                     trials_per_size,
+                                                     self.data)
 
     #TODO: Move this outside of this class
     def save_data(self):
-        with open(self.path + self.filename, 'wb') as f:
-            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+        file_name = self.path + self.filename
+        save_object(self,file_name)
 
 
 

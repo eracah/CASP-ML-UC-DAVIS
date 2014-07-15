@@ -14,19 +14,67 @@ try:
 except:
     pass
 
-class Configs:
+class EstimatorConfigs(object):
+    def __init__(self,estimator,params):
+        self.estimator = estimator
+        self.params = params
+
+    def get_estimator_name(self):
+        return repr(self.estimator).split('(')[0]
+
+    def get_estimator_short_name(self):
+        name = self.get_estimator_name()
+        short_name_dict = {
+            'KNeighborsRegressor' : 'KNR',
+            'RandomForestRegressor' : 'RFR'
+        }
+        return short_name_dict[name]
+
+    def get_display_name(self, configs):
+        name_params = configs.get_name_params()
+        for param in name_params:
+            value = getattr(configs,param)
+
+
+class BatchConfigs(object):
     def __init__(self):
+        self.all_configs = []
+
+    @staticmethod
+    def create_batch_configs():
+        batch_configs = BatchConfigs()
+        knr_configs = EstimatorConfigs(KNeighborsRegressor(), {'n_neighbors': [1, 2, 3, 5, 9]})
+        rfr_configs = EstimatorConfigs(RandomForestRegressor(), {'n_estimators': [1, 2, 4, 8, 16]})
+        estimator_configs = [knr_configs, rfr_configs]
+        for estimator in estimator_configs:
+            c = Configs(estimator_configs=estimator)
+            batch_configs.all_configs.append(c)
+        return batch_configs
+
+
+class VisualizationConfigs(object):
+    def __init__(self):
+        t = time.localtime()
+        self.date_string = str(t.tm_mon) + '-' + str(t.tm_mday) + '-' + str(t.tm_year)
+        self.show_plots = True
+        self.viz_loss_function = LossFunction(LossFunction.PRECISION)
+        self.path_to_store_graphs = './Results/Plots/'
+        self.show_train = True
+        if imported_override:
+            OverrideConfigs.apply_viz_overrides(self)
+        else:
+            print('Couldn''t find OverrideConfigs.py')
+
+class Configs(object):
+    def __init__(self, **kwargs):
+        self.estimator_configs =  EstimatorConfigs(KNeighborsRegressor(), {'n_neighbors': [1, 2, 3, 5, 9]})
         t = time.localtime()
         self.date_string = str(t.tm_mon) + '-' + str(t.tm_mday) + '-' + str(t.tm_year)
         self.path_to_targets = './Targets/'
         self.path_to_store_results = './Results/Data/'
-        self.path_to_store_graphs = './Results/Plots/'
         self.target_data_file_name = 'SavedData/data.p'
         self.test_size = 0.2
         self.training_sizes =[10, 100, 125, 150, 175, 200, 230]
-        self.estimators = [KNeighborsRegressor(), RandomForestRegressor()]
-        self.estimator_names = [repr(est).split('(')[0] for est in self.estimators]
-        self.parameter_grids =[{'n_neighbors': [1, 2, 3, 5, 9]}, {'n_estimators': [1, 2, 4, 8, 16]}]
         self.scoring = 'mean_squared_error'
         self.n_folds = 5
         self.trials_per_size = 5
@@ -35,28 +83,34 @@ class Configs:
         self.show_plots = True
         self.load_target_data = False
         self.save_the_results = True
-        self.results_loss_function = LossFunction.PRECISION
-        self.cv_loss_function = LossFunction.PRECISION
+        self.cv_loss_function = LossFunction(LossFunction.PRECISION)
         self.use_grid_search_cv = False
+        self.params_to_vary = []
         #Try to apply local Configs
+
+        self.update_configs(**kwargs)
+
         if imported_override:
             OverrideConfigs.apply_overrides(self)
         else:
             print('Couldn''t find OverrideConfigs.py')
 
+        self.estimator_name = self.estimator_configs.get_estimator_short_name()
         #after the override so names can be generated from overridden parameters
         self.save_results_file_name = self._generate_save_results_filename()
         self.recall_results_file_name = self.save_results_file_name
 
+    def update_configs(self, **kwargs):
+        for key, value in kwargs.iteritems():
+            assert hasattr(self, key)
+            setattr(self, key, value)
 
     def _get_name_params(self):
-        name_params = ['date_string']
+        name_params = ['cv_loss_function']
         return name_params
 
     def _generate_save_results_filename(self):
-        few = 6
-        delim = ','
-        name_params = self._get_name_params()
+        # few = 6
         # first_few_letters = slice(0, 6)
         # estimators_used_in_this_run_string = ''.join([estimator_name[first_few_letters] + '_' for estimator_name in self.estimator_names])
         # training_size_range_string = 'train:' + self._get_range_of_values_from_a_list(self.training_sizes)
@@ -71,14 +125,18 @@ class Configs:
         #
         # file_string = estimators_used_in_this_run_string + ''.join(list_of_parameter_name_and_value_strings) \
         #               + training_size_range_string + '.dat'
-        file_string = ''
-        name_params = self._get_name_params()
-        for index, param in enumerate(name_params):
-            file_string += param + '=' + getattr(self,param)
-            if index != len(name_params)-1:
-                file_string += delim
+        file_string = self.get_display_name()
         file_string += '.dat'
-        return file_string
+        return self.date_string + '/' + file_string
+
+    def get_display_name(self):
+        delim = ','
+        name = self.estimator_name
+        name_params = self._get_name_params()
+        for param in name_params:
+            value = str(getattr(self, param))
+            name += delim + param + '=' + value
+        return name
 
     def _get_range_of_values_from_a_list(self, the_list):
         first_number = 0
