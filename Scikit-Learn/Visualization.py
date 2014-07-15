@@ -38,12 +38,16 @@ class Visualization(object):
     def scatter_data(self, estimator_name, sizes, x_name, y_name, line_args, do_scatter_plot=False):
         legend = []
         estimator_results = self.results_obj.estimator_results
-        x, y = estimator_results.get_plot_arrays(sizes, (x_name, y_name))
+        arrays, all_vars = estimator_results.get_plot_arrays(sizes, (x_name, y_name))
+        x = arrays[0]
+        y = arrays[1]
+        y_vars = all_vars[0]
         if do_scatter_plot:
             plt.scatter(x, y, c=self.new_color(), alpha=alpha)
         else:
             # plt.plot(x, y, c=self.new_color(), alpha=alpha, lw=5)
-            plt.plot(x, y, **line_args)
+            # plt.plot(x, y, **line_args)
+            plt.errorbar(x, y, yerr=y_vars, **line_args)
         legend.append(estimator_name + ' ' + y_name)
         return legend
 
@@ -61,15 +65,17 @@ class Visualization(object):
         estimator_name = self.results_obj.estimator_name
         training_sizes = self.results_obj.configs.training_sizes
 
+        train_line_style = 'dashed'
+        test_line_style = 'solid'
         line_args = {
             'c' : self.new_color(),
             'alpha' : 1,
             'lw' : 2,
-            'linestyle' : 'solid',
-            'marker' : 'o'
+            'linestyle' : test_line_style,
+            'capsize' : 20
         }
         l1 = self.scatter_data(estimator_name, training_sizes, 'training_size', 'test_error', line_args)
-        line_args['linestyle'] = 'dashed'
+        line_args['linestyle'] = train_line_style
         l2 = self.scatter_data(estimator_name, training_sizes, 'training_size', 'train_error', line_args)
         self.learning_curve_data.legend_list += l1 + l2
 

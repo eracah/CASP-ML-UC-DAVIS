@@ -4,6 +4,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
 from LossFunction import LossFunction
 import time
+import copy
 
 #Try to import OverrideConfigs.  Used to apply local overrides without modifying this file.
 #The goal of this is to prevent accidentally committing changes to this file
@@ -44,13 +45,26 @@ class BatchConfigs(object):
     def create_batch_configs():
         batch_configs = BatchConfigs()
         knr_configs = EstimatorConfigs(KNeighborsRegressor(), {'n_neighbors': [1, 2, 3, 5, 9]})
-        rfr_configs = EstimatorConfigs(RandomForestRegressor(), {'n_estimators': [1, 2, 4, 8, 16]})
+        rfr_configs = EstimatorConfigs(RandomForestRegressor(n_estimators=16),
+                                       {'max_depth': [5, 10, 20, 40, 80, None]})
         estimator_configs = [knr_configs, rfr_configs]
         for estimator in estimator_configs:
             c = Configs(estimator_configs=estimator)
             batch_configs.all_configs.append(c)
+        # batch_configs.vary_config('cv_loss_function',[
+        #     LossFunction(LossFunction.MEAN_SQUARED_ERROR),
+        #     LossFunction(LossFunction.PRECISION)
+        # ])
         return batch_configs
 
+    def vary_config(self, param, values):
+        new_configs = []
+        for configs in self.all_configs:
+            for curr_value in values:
+                new_config = copy.deepcopy(configs)
+                setattr(new_config, param, curr_value)
+                new_config.append(new_config)
+        self.all_configs = new_configs
 
 class VisualizationConfigs(object):
     def __init__(self):
@@ -67,14 +81,14 @@ class VisualizationConfigs(object):
 
 class Configs(object):
     def __init__(self, **kwargs):
-        self.estimator_configs =  EstimatorConfigs(KNeighborsRegressor(), {'n_neighbors': [1, 2, 3, 5, 9]})
+        self.estimator_configs =  EstimatorConfigs(KNeighborsRegressor(), {'n_neighbors': [1, 2, 3, 7, 13, 21]})
         t = time.localtime()
         self.date_string = str(t.tm_mon) + '-' + str(t.tm_mday) + '-' + str(t.tm_year)
         self.path_to_targets = './Targets/'
         self.path_to_store_results = './Results/Data/'
         self.target_data_file_name = 'SavedData/data.p'
         self.test_size = 0.2
-        self.training_sizes =[10, 100, 125, 150, 175, 200, 230]
+        self.training_sizes = [10, 100, 125, 150, 175, 200, 230]
         self.scoring = 'mean_squared_error'
         self.n_folds = 5
         self.trials_per_size = 5

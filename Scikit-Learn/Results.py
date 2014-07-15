@@ -126,13 +126,15 @@ class EstimatorResult(object):
 
     def get_plot_arrays(self, sizes, names):
         ret = len(names)*[0]
+        all_vars = []
         for i, name in enumerate(names):
             if name == 'training_size':
                 ret[i] = sizes
             else:
                 means, vars = self.get_aggregated_data(name, sizes)
                 ret[i] = means
-        return ret
+                all_vars.append(vars)
+        return ret, all_vars
     
     def generate_performance_results(self, data, configs):
         for training_sample_results in self.training_sample_dict.itervalues():

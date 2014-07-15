@@ -46,8 +46,8 @@ class LossFunction:
                               target_ids,
                               loss_function,
                               k=5,
-                              use_weights=True):
-        if loss_function == LossFunction.MEAN_SQUARED_ERROR:
+                              use_weights=False):
+        if loss_function.loss_function_type == LossFunction.MEAN_SQUARED_ERROR:
             val = metrics.mean_squared_error(y_pred, y_actual)
         else:
             target_ids_set = set(target_ids.tolist())
@@ -63,7 +63,7 @@ class LossFunction:
                     relevance = np.zeros(len(y_pred_target))
                     relevance[top_k_inds] = 1
                 pred_ranking = relevance[pred_order]
-                if loss_function == LossFunction.PRECISION:
+                if loss_function.loss_function_type == LossFunction.PRECISION:
                     scores[index] = LossFunction._precision_at_k(pred_ranking, k)
                 else:
                     scores[index] = LossFunction._ndcg_at_k(pred_ranking, k)
