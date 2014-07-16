@@ -11,6 +11,7 @@ from Configs.Configs import Configs
 from LossFunction import LossFunction
 from HelperFunctions import concatenate_arrays
 from HelperFunctions import save_object
+from Estimator import Estimator
 
 class FoldData(object):
     pass
@@ -40,10 +41,9 @@ class TrainingSampleResult(object):
 
     def add_sample_results(self, fold_data, data):
         self.fold_data.append(fold_data)
+        self._generate_predictions(data, self.count)
         self.count += 1
         #TODO: This is kinda weird - maybe make this a separate function call
-        if self.count == self.trials:
-            self._generate_predictions(data)
 
     def generate_performance_results(self, data, configs):
         num_folds = len(self.fold_data)
@@ -78,23 +78,27 @@ class TrainingSampleResult(object):
         self.train_error = train_perf
         self.test_error = test_perf
 
-    def _generate_predictions(self,data):
+    def _generate_predictions(self, data, index):
         #self.data_dict['train_actual_values'] = self.y_trains
-        x_test, y_test, test_inds, _ = data.select_targets(data.test_targets)
+        x_test, y_test, test_inds, test_target_ids = data.select_targets(data.test_targets)
 
-        for index, fold in enumerate(self.fold_data):
-            train_targets = fold.train_targets
-            x_train, y_train, _, _ = data.select_targets(train_targets)
+        fold = self.fold_data[index]
+        train_targets = fold.train_targets
+        x_train, y_train, _, train_target_ids = data.select_targets(train_targets)
 
+        if isinstance(fold.estimator,Estimator):
+            fold.test_predicted_values = fold.estimator.predict(x_test, y_test, test_target_ids)
+            fold.train_predicted_values = fold.estimator.predict(x_train, y_train, train_target_ids)
+        else:
             fold.test_predicted_values = fold.estimator.predict(x_test)
             fold.train_predicted_values = fold.estimator.predict(x_train)
-            fold.train_actual_values = y_train
-            fold.test_actual_values = y_test
-            fold.test_inds = test_inds
+        fold.train_actual_values = y_train
+        fold.test_actual_values = y_test
+        fold.test_inds = test_inds
 
-            # Hacky solution to result file size - the grid search object is very large
-            # Better to just not make estimator an attribute in the first place
-            del fold.estimator
+        # Hacky solution to result file size - the grid search object is very large
+        # Better to just not make estimator an attribute in the first place
+        del fold.estimator
         
 
 class EstimatorResult(object):

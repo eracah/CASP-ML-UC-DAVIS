@@ -3,6 +3,9 @@ __author__ = 'Evan Racah'
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
 from LossFunction import LossFunction
+from Estimator import Estimator
+from Estimator import GuessEstimator
+from Estimator import RankLib
 import time
 import copy
 
@@ -15,19 +18,29 @@ try:
 except:
     pass
 
-class EstimatorConfigs(object):
+class BaseConfigs(object):
+    def update_configs(self, **kwargs):
+        for key, value in kwargs.iteritems():
+            assert hasattr(self, key)
+            setattr(self, key, value)
+
+class EstimatorConfigs(BaseConfigs):
     def __init__(self,estimator,params):
         self.estimator = estimator
         self.params = params
 
     def get_estimator_name(self):
+        if isinstance(self.estimator, Estimator):
+            return self.estimator.get_name()
         return repr(self.estimator).split('(')[0]
 
     def get_estimator_short_name(self):
         name = self.get_estimator_name()
         short_name_dict = {
-            'KNeighborsRegressor' : 'KNR',
-            'RandomForestRegressor' : 'RFR'
+            'KNeighborsRegressor': 'KNR',
+            'RandomForestRegressor': 'RFR',
+            'RankLib': 'RL',
+            'Guess': 'Guess'
         }
         return short_name_dict[name]
 
@@ -37,17 +50,22 @@ class EstimatorConfigs(object):
             value = getattr(configs,param)
 
 
-class BatchConfigs(object):
+class BatchConfigs(BaseConfigs):
     def __init__(self):
         self.all_configs = []
 
     @staticmethod
     def create_batch_configs():
         batch_configs = BatchConfigs()
-        knr_configs = EstimatorConfigs(KNeighborsRegressor(), {'n_neighbors': [1, 2, 3, 5, 9]})
+        knr_configs = EstimatorConfigs(KNeighborsRegressor(),
+                                       {'n_neighbors': [1, 2, 3, 5, 9]})
         rfr_configs = EstimatorConfigs(RandomForestRegressor(n_estimators=16),
                                        {'max_depth': [5, 10, 20, 40, 80, None]})
-        estimator_configs = [knr_configs, rfr_configs]
+        rl_configs = EstimatorConfigs(RankLib(),
+                                        {'k': [5]})
+        guess_configs = EstimatorConfigs(GuessEstimator(),
+                                         {'unused': [0]})
+        estimator_configs = [rl_configs, knr_configs, rfr_configs, guess_configs]
         for estimator in estimator_configs:
             c = Configs(estimator_configs=estimator)
             batch_configs.all_configs.append(c)
@@ -66,7 +84,7 @@ class BatchConfigs(object):
                 new_config.append(new_config)
         self.all_configs = new_configs
 
-class VisualizationConfigs(object):
+class VisualizationConfigs(BaseConfigs):
     def __init__(self):
         t = time.localtime()
         self.date_string = str(t.tm_mon) + '-' + str(t.tm_mday) + '-' + str(t.tm_year)
@@ -79,7 +97,7 @@ class VisualizationConfigs(object):
         else:
             print('Couldn''t find OverrideConfigs.py')
 
-class Configs(object):
+class Configs(BaseConfigs):
     def __init__(self, **kwargs):
         self.estimator_configs =  EstimatorConfigs(KNeighborsRegressor(), {'n_neighbors': [1, 2, 3, 7, 13, 21]})
         t = time.localtime()
@@ -113,11 +131,6 @@ class Configs(object):
         #after the override so names can be generated from overridden parameters
         self.save_results_file_name = self._generate_save_results_filename()
         self.recall_results_file_name = self.save_results_file_name
-
-    def update_configs(self, **kwargs):
-        for key, value in kwargs.iteritems():
-            assert hasattr(self, key)
-            setattr(self, key, value)
 
     def _get_name_params(self):
         name_params = ['cv_loss_function']

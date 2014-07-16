@@ -20,7 +20,6 @@ def recall_main_results(configs):
 
 
 def learn_main_results(configs):
-    #learner = Learn(path_to_targets, estimators, test_size, path_to_store_results, results_filename)
     learner = Learn(configs)
     Main_results = learner.run_grid_search()
     Main_results.configs = configs

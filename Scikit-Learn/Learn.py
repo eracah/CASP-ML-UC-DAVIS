@@ -13,12 +13,12 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.grid_search import ParameterGrid
 from Results import MainResult
 from LossFunction import LossFunction
-
+from Estimator import Estimator
 
 # Version number to prevent loading out of data data
 DATA_VERSION = 1
 
-class Data:
+class Data(object):
     def __init__(self):
         self._version = DATA_VERSION
         pass
@@ -57,6 +57,18 @@ class Data:
     def get_num_targets(self):
         return self.train_targets.max()
 
+    @staticmethod
+    def make_score_0_1(Y, target_ids, k):
+        target_ids_set = set(target_ids.tolist())
+        Y_0_1 = Y.copy()
+        for index, target_id in enumerate(target_ids_set):
+            target_inds = (target_ids == target_id).nonzero()
+            Y_target = Y[target_inds]
+            top_k_inds = Y_target.argsort()[:-k - 1:-1]
+            relevance = np.zeros(len(Y_target))
+            relevance[top_k_inds] = 1
+            Y_0_1[target_inds] = relevance
+        return Y_0_1
 
 class Learn():
     def __init__(self, config):
@@ -69,6 +81,7 @@ class Learn():
         # instantiate a main result object
         self.main_results = MainResult(self.estimator_name, self.config.path_to_store_results,
                                        self.config.save_results_file_name)
+
 
 
     def run_grid_search(self):
@@ -97,17 +110,27 @@ class Learn():
                         cv_train_targets = sampled_targets[train_target_indices]
                         cv_test_targets = sampled_targets[test_target_indices]
 
-                        cv_train_x, cv_train_y, _, _ = self.data.select_targets(cv_train_targets)
+                        cv_train_x, cv_train_y, _, cv_train_target_ids = self.data.select_targets(cv_train_targets)
                         cv_test_x, cv_test_y, _, cv_test_target_ids = self.data.select_targets(cv_test_targets)
 
                         for param_index, params in enumerate(param_grid):
                             estimator_configs.estimator.set_params(**params)
-                            estimator_configs.estimator.fit(cv_train_x,cv_train_y)
-                            cv_test_pred = estimator_configs.estimator.predict(cv_test_x)
+                            if isinstance(estimator_configs.estimator,Estimator):
+                                estimator_configs.estimator.set_cv_data(cv_test_x,
+                                                                        cv_test_y,
+                                                                        cv_test_target_ids)
+                                estimator_configs.estimator.fit(cv_train_x,
+                                                                cv_train_y,
+                                                                cv_train_target_ids)
+                                cv_test_pred = estimator_configs.estimator.predict(cv_test_x,
+                                                                                   cv_test_y,
+                                                                                   cv_test_target_ids)
+                            else:
+                                estimator_configs.estimator.fit(cv_train_x,cv_train_y)
+                                cv_test_pred = estimator_configs.estimator.predict(cv_test_x)
                             score = LossFunction.compute_loss_function(cv_test_pred, cv_test_y,
                                                                        cv_test_target_ids, self.config.cv_loss_function)
                             cv_scores[param_index].append(score)
-                            pass
                     best_param_index = self._get_best_param_index(cv_scores)
                     best_params = param_grid[best_param_index]
                     best_estimator = copy.deepcopy(estimator_configs.estimator)
@@ -127,7 +150,11 @@ class Learn():
                 t0 = time.time()
                 #fit estimator with best parameters to training data
                 if not self.config.use_grid_search_cv:
-                    best_estimator.fit(x_train,y_train)
+                    if isinstance(best_estimator, Estimator):
+                        best_estimator.clear_cv_data()
+                        best_estimator.fit(x_train, y_train, self.data.get_target_ids(train_inds))
+                    else:
+                        best_estimator.fit(x_train, y_train)
                 else:
                     grid_search.best_estimator_.fit(x_train, y_train)
                     best_estimator = grid_search.best_estimator_

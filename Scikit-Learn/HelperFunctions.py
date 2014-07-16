@@ -58,3 +58,7 @@ def load_object(file_name):
     with open(file_name, 'rb') as f:
         data = pickle.load(f)
     return data
+
+def check_input(*args):
+    for arg in args[1:]:
+        assert args[0].shape[0] == arg.shape[0]
