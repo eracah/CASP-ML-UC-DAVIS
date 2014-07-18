@@ -27,7 +27,8 @@ class Visualization(object):
         self.results_obj.generate_performance_results()
 
     def plot_all(self):
-        self.plot_actual_vs_predicted_curve()
+        pass
+        #self.plot_actual_vs_predicted_curve()
 
     def new_color(self):
         col = self.colors[self.color_index % len(self.colors)]
@@ -90,6 +91,14 @@ class Visualization(object):
 
         self.fig_number += 1
 
+
+    # def plot_feature_importance_bar_chart(self):
+    #     mean_importances = self.results_obj.get_mean_feature_importance()
+    #     print mean_importances.shape
+    #     print len(mean_importances)
+    #     fig = plt.figure()
+    #     ax = plt.subplot(111)
+    #     ax.bar(range(), mean_importances, width=1)
 
     def plot_actual_vs_predicted_curve(self):
         #TODO: This doesn't work anymore.

@@ -141,6 +141,7 @@ class Configs(BaseConfigs):
         self.cv_loss_function = LossFunction(LossFunction.PRECISION)
         self.use_grid_search_cv = False
         self.params_to_vary = []
+        self.use_ranks_for_y = False
         #Try to apply local Configs
 
         self.update_configs(**kwargs)

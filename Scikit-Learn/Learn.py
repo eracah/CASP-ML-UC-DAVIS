@@ -14,6 +14,8 @@ from sklearn.grid_search import ParameterGrid
 from Results import MainResult
 from LossFunction import LossFunction
 from Estimator import Estimator
+import scipy.stats as ss
+
 
 # Version number to prevent loading out of data data
 DATA_VERSION = 1
@@ -21,6 +23,7 @@ DATA_VERSION = 1
 class Data(object):
     def __init__(self):
         self._version = DATA_VERSION
+        self.use_rank_as_y = False
         pass
 
     def assert_version(self):
@@ -41,7 +44,11 @@ class Data(object):
             inds = inds[0]
             to_select = np.concatenate((to_select, inds))
         x_targets = self.input_array[to_select, :]
-        y_targets = self.output_array[to_select]
+        if self.use_ranks_for_y:
+            y_targets = self.rank_output_array[to_select, :]
+        else:
+            y_targets = self.output_array[to_select]
+
         to_select = np.asarray(to_select,dtype=int)
         targets_ids = self.get_target_ids(to_select)
         return x_targets, y_targets, to_select, targets_ids
@@ -49,6 +56,10 @@ class Data(object):
     def sample_train(self, num_train):
         train_targets = random.sample(self.train_targets, num_train)
         train_x, train_y, selected_inds, _ = self.select_targets(train_targets)
+
+        #TODO: Normalize train_x here to prevent data snooping
+        # normalizes every column
+        # train_x = stats.zscore(train_x, axis=0)
         return train_x, train_y, selected_inds, train_targets
 
     def get_target_ids(self, inds):
@@ -75,7 +86,10 @@ class Learn():
         self.config = config
 
         data = self._get_data(self.config.path_to_targets,self.config)
+
         self.data = self._get_test_and_train(data, config.test_size)
+        if self.config.use_ranks_for_y:
+            self.data.use_ranks_for_y = True
         self.estimator_configs = config.estimator_configs
         self.estimator_name = config.estimator_name
         # instantiate a main result object
@@ -159,7 +173,12 @@ class Learn():
                     grid_search.best_estimator_.fit(x_train, y_train)
                     best_estimator = grid_search.best_estimator_
 
+                if hasattr(best_estimator, 'feature_importances_'):
+                    feature_importances = best_estimator.feature_importances_
+                else:
+                    feature_importances = []
                 time_to_fit = time.time() - t0
+
 
                 print 'training size: ', training_size, '. best parameter value', ': ', best_params, '. time_to_fit:', time_to_fit
                 print 'search time ', search_time
@@ -174,7 +193,8 @@ class Learn():
                                                         train_targets,
                                                         time_to_fit,
                                                         trial,
-                                                        self.config.trials_per_size)
+                                                        self.config.trials_per_size,
+                                                        feature_importances)
 
 
 
@@ -192,6 +212,7 @@ class Learn():
     def _get_test_and_train(data, test_size):
         target_array = data.get_targets_array()
         data.train_targets, data.test_targets = train_test_split(target_array, test_size=test_size)
+
         return data
 
     @staticmethod
@@ -207,33 +228,34 @@ class Learn():
             # convert every target csv file to numpy matrix and split up between
             #input and output (label)
             target_files = glob.glob(path + '*.csv')
-            # preallocate python lists
             data = Data()
             input_dim = 68
             target_id_counter = 1
             input_array = np.zeros((0, input_dim))
             output_array = np.zeros(0)
+            rank_output_array = np.zeros(0)
             target_ids = np.zeros(0,dtype=int)
             for target_file in target_files:
-                # all target files of form target_number.csv, so
-                #this strips the .csv to get the number as a string and then makes it an int
-                target_index = int(target_file[len(path):-len('.csv')])
-
                 #get array from csv files
                 target = np.genfromtxt(target_file, delimiter=',')
 
                 num_models = target.shape[0]
                 input_array = np.concatenate((input_array, target[:, 0:-1]))
                 output_array = np.concatenate((output_array, target[:, -1]))
+                rank_output_array = np.concatenate((rank_output_array,ss.rankdata(target[:, -1])))
+                #make a column vector with the target id number
                 target_ids = np.concatenate((target_ids, target_id_counter * np.ones(num_models,dtype=int)))
                 target_id_counter += 1
             data.input_array = input_array
             data.output_array = output_array
+            data.rank_output_array = rank_output_array
             data.target_ids = target_ids
+
             with open(data_file_name, 'wb') as f:
                 pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
         data.assert_version()
         return data
+
 
 
 

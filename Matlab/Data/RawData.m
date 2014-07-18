@@ -141,6 +141,10 @@ classdef RawData
                 obj.testDataCreated = true;
         end
         
+        function [fieldName] = getFieldNames(obj)
+            fieldName = obj.targetsCellArray{1}.fields(:,obj.startFeatureIndex:obj.endFeatureIndex)
+        end
+            
         function [aTargetsData, aTargetsLabel] = getTargetData(obj,targetIndex)
             aTargetsData = obj.targetsCellArray{targetIndex}.values(:,obj.startFeatureIndex:obj.endFeatureIndex);
             
