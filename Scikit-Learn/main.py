@@ -1,9 +1,22 @@
 __author__ = 'Evan Racah'
-from Learn import Learn
+from os import system
+import sys
+try:
+    from Learn import Learn
+except:
+    system('module load python matplotlib python-libs/2.7.5')
+    system('module load python')
+    try:
+        from Learn import Learn
+    except:
+        sys.exit('Rehan recommends getting Scikit-Learn')
+
 from Visualization import Visualization
 import Configs.Configs as cfg
 import os.path
 import pickle
+import time
+
 
 def create_main_result_file_name(configs):
     return configs.path_to_store_results + configs.save_results_file_name
@@ -14,6 +27,7 @@ def main_results_exist(configs):
 
 def recall_main_results(configs):
     file_name = create_main_result_file_name(configs)
+    file_name = './Results/Data/7-18-2014/RFR,cv_loss_function=P.dat'
     with open(file_name, 'rb') as f:
         return pickle.load(f)
 
@@ -27,6 +41,8 @@ def learn_main_results(configs):
 
 
 if __name__ == "__main__":
+
+    t0 = time.time()
     batch_configs = cfg.BatchConfigs.create_batch_configs()
     #for each estimator's conifgs
     for configs in batch_configs.all_configs:
@@ -35,7 +51,7 @@ if __name__ == "__main__":
             print('Done Training!')
         else:
             print('Results already exist')
-
+    print "time:", time.time() - t0
     viz_configs = cfg.VisualizationConfigs()
     viz = Visualization(viz_configs)
     for configs in batch_configs.all_configs:
