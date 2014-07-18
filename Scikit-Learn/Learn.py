@@ -23,7 +23,7 @@ DATA_VERSION = 1
 class Data(object):
     def __init__(self):
         self._version = DATA_VERSION
-        self.use_rank_as_y = False
+        self.use_ranks_for_y = False
         pass
 
     def assert_version(self):

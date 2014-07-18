@@ -169,7 +169,7 @@ class MainResult(object):
     #TODO: Move this outside of this class
     def save_data(self):
         file_name = self.path + self.filename
-        save_object(self,file_name)
+        save_object(self, file_name)
 
 
 
