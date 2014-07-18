@@ -59,7 +59,7 @@ def run_ranking(configs):
         '-gmax',
         str(score_max),
         '-tree',
-        '200',
+        '500',
         '-estop',
         '50'
     ]

@@ -41,7 +41,7 @@ class GuessEstimator(Estimator):
         return
 
     def predict(self, X, Y, target_ids):
-        Estimator.check_input(X, Y, target_ids)
+        check_input(X, Y, target_ids)
         scores = np.ndarray(len(Y))
         for i in range(len(scores)):
             scores[i] = random.random()
@@ -83,7 +83,8 @@ class RankLib(Estimator):
 
 
     def clear_cv_data(self):
-        del self.cv_file_name
+        if hasattr(self,'cv_file_name'):
+            del self.cv_file_name
 
     def predict(self, X, Y, target_ids):
         k = self.k

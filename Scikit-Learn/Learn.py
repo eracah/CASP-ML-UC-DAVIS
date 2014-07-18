@@ -120,32 +120,35 @@ class Learn():
                     for i in range(len(param_grid)):
                         cv_scores.append([])
 
-                    for train_target_indices, test_target_indices in kf:
-                        cv_train_targets = sampled_targets[train_target_indices]
-                        cv_test_targets = sampled_targets[test_target_indices]
+                    if len(param_grid) == 1:
+                        best_param_index = 0
+                    else:
+                        for train_target_indices, test_target_indices in kf:
+                            cv_train_targets = sampled_targets[train_target_indices]
+                            cv_test_targets = sampled_targets[test_target_indices]
 
-                        cv_train_x, cv_train_y, _, cv_train_target_ids = self.data.select_targets(cv_train_targets)
-                        cv_test_x, cv_test_y, _, cv_test_target_ids = self.data.select_targets(cv_test_targets)
+                            cv_train_x, cv_train_y, _, cv_train_target_ids = self.data.select_targets(cv_train_targets)
+                            cv_test_x, cv_test_y, _, cv_test_target_ids = self.data.select_targets(cv_test_targets)
 
-                        for param_index, params in enumerate(param_grid):
-                            estimator_configs.estimator.set_params(**params)
-                            if isinstance(estimator_configs.estimator,Estimator):
-                                estimator_configs.estimator.set_cv_data(cv_test_x,
-                                                                        cv_test_y,
-                                                                        cv_test_target_ids)
-                                estimator_configs.estimator.fit(cv_train_x,
-                                                                cv_train_y,
-                                                                cv_train_target_ids)
-                                cv_test_pred = estimator_configs.estimator.predict(cv_test_x,
-                                                                                   cv_test_y,
-                                                                                   cv_test_target_ids)
-                            else:
-                                estimator_configs.estimator.fit(cv_train_x,cv_train_y)
-                                cv_test_pred = estimator_configs.estimator.predict(cv_test_x)
-                            score = LossFunction.compute_loss_function(cv_test_pred, cv_test_y,
-                                                                       cv_test_target_ids, self.config.cv_loss_function)
-                            cv_scores[param_index].append(score)
-                    best_param_index = self._get_best_param_index(cv_scores)
+                            for param_index, params in enumerate(param_grid):
+                                estimator_configs.estimator.set_params(**params)
+                                if isinstance(estimator_configs.estimator,Estimator):
+                                    estimator_configs.estimator.set_cv_data(cv_test_x,
+                                                                            cv_test_y,
+                                                                            cv_test_target_ids)
+                                    estimator_configs.estimator.fit(cv_train_x,
+                                                                    cv_train_y,
+                                                                    cv_train_target_ids)
+                                    cv_test_pred = estimator_configs.estimator.predict(cv_test_x,
+                                                                                       cv_test_y,
+                                                                                       cv_test_target_ids)
+                                else:
+                                    estimator_configs.estimator.fit(cv_train_x,cv_train_y)
+                                    cv_test_pred = estimator_configs.estimator.predict(cv_test_x)
+                                score = LossFunction.compute_loss_function(cv_test_pred, cv_test_y,
+                                                                           cv_test_target_ids, self.config.cv_loss_function)
+                                cv_scores[param_index].append(score)
+                        best_param_index = self._get_best_param_index(cv_scores)
                     best_params = param_grid[best_param_index]
                     best_estimator = copy.deepcopy(estimator_configs.estimator)
                     best_estimator.set_params(**best_params)
