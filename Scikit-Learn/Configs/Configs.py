@@ -79,7 +79,7 @@ class BatchConfigs(BaseConfigs):
         estimator_configs = [rl_configs, knr_configs, rfr_configs, guess_configs]
 
         if imported_override:
-            estimator_configs = OverrideConfigs.apply_estimator_overrides(EstimatorConfigs)
+            estimator_configs = OverrideConfigs.apply_estimator_overrides(estimator_configs)
 
         else:
             print('Couldn''t find OverrideConfigs.py')
