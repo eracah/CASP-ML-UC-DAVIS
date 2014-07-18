@@ -9,14 +9,17 @@ from Estimator import RankLib
 import time
 import copy
 
+
 #Try to import OverrideConfigs.  Used to apply local overrides without modifying this file.
 #The goal of this is to prevent accidentally committing changes to this file
 imported_override = False
 try:
     import OverrideConfigs
+
     imported_override = True
 except:
     pass
+
 
 class BaseConfigs(object):
     def update_configs(self, **kwargs):
@@ -24,8 +27,20 @@ class BaseConfigs(object):
             assert hasattr(self, key)
             setattr(self, key, value)
 
+
 class EstimatorConfigs(BaseConfigs):
-    def __init__(self,estimator,params):
+    short_name_dict = {
+        'KNeighborsRegressor': 'KNR',
+        'RandomForestRegressor': 'RFR',
+        'RankLib': 'RL',
+        'Guess': 'Guess',
+        'AdaBoostRegressor': 'ABR',
+        'ExtraTreesRegressor': 'ETR',
+        'GradientBoostingRegressor': 'GBR',
+        'RadiusNeighborsRegressor': 'RNR'
+    }
+
+    def __init__(self, estimator, params):
         self.estimator = estimator
         self.params = params
 
@@ -34,20 +49,16 @@ class EstimatorConfigs(BaseConfigs):
             return self.estimator.get_name()
         return repr(self.estimator).split('(')[0]
 
-    def get_estimator_short_name(self):
+    @property
+    def estimator_short_name(self):
         name = self.get_estimator_name()
-        short_name_dict = {
-            'KNeighborsRegressor': 'KNR',
-            'RandomForestRegressor': 'RFR',
-            'RankLib': 'RL',
-            'Guess': 'Guess'
-        }
-        return short_name_dict[name]
+
+        return EstimatorConfigs.short_name_dict[name]
 
     def get_display_name(self, configs):
         name_params = configs.get_name_params()
         for param in name_params:
-            value = getattr(configs,param)
+            value = getattr(configs, param)
 
 
 class BatchConfigs(BaseConfigs):
@@ -62,10 +73,17 @@ class BatchConfigs(BaseConfigs):
         rfr_configs = EstimatorConfigs(RandomForestRegressor(n_estimators=16),
                                        {'max_depth': [5, 10, 20, 40, 80, None]})
         rl_configs = EstimatorConfigs(RankLib(),
-                                        {'k': [5]})
+                                      {'k': [5]})
         guess_configs = EstimatorConfigs(GuessEstimator(),
                                          {'unused': [0]})
         estimator_configs = [rl_configs, knr_configs, rfr_configs, guess_configs]
+
+        if imported_override:
+            estimator_configs = OverrideConfigs.apply_estimator_overrides(EstimatorConfigs)
+
+        else:
+            print('Couldn''t find OverrideConfigs.py')
+
         for estimator in estimator_configs:
             c = Configs(estimator_configs=estimator)
             batch_configs.all_configs.append(c)
@@ -79,10 +97,14 @@ class BatchConfigs(BaseConfigs):
         new_configs = []
         for configs in self.all_configs:
             for curr_value in values:
+                #TODO: do we have to make deep copy here?
+                #can't we we just set the attribute in the
+                #config
                 new_config = copy.deepcopy(configs)
                 setattr(new_config, param, curr_value)
                 new_config.append(new_config)
         self.all_configs = new_configs
+
 
 class VisualizationConfigs(BaseConfigs):
     def __init__(self):
@@ -97,16 +119,17 @@ class VisualizationConfigs(BaseConfigs):
         else:
             print('Couldn''t find OverrideConfigs.py')
 
+
 class Configs(BaseConfigs):
     def __init__(self, **kwargs):
-        self.estimator_configs =  EstimatorConfigs(KNeighborsRegressor(), {'n_neighbors': [1, 2, 3, 7, 13, 21]})
+        self.estimator_configs = EstimatorConfigs(KNeighborsRegressor(), {'n_neighbors': [1, 2, 3, 7, 13, 21]})
         t = time.localtime()
         self.date_string = str(t.tm_mon) + '-' + str(t.tm_mday) + '-' + str(t.tm_year)
         self.path_to_targets = './Targets/'
         self.path_to_store_results = './Results/Data/'
         self.target_data_file_name = 'SavedData/data.p'
         self.test_size = 0.2
-        self.training_sizes = [10, 100, 125, 150, 175, 200, 230]
+        self.training_sizes = (10, 100, 125, 150, 175, 200, 230)
         self.scoring = 'mean_squared_error'
         self.n_folds = 5
         self.trials_per_size = 5
@@ -127,31 +150,16 @@ class Configs(BaseConfigs):
         else:
             print('Couldn''t find OverrideConfigs.py')
 
-        self.estimator_name = self.estimator_configs.get_estimator_short_name()
+        self.estimator_name = self.estimator_configs.estimator_short_name
         #after the override so names can be generated from overridden parameters
         self.save_results_file_name = self._generate_save_results_filename()
         self.recall_results_file_name = self.save_results_file_name
 
-    def _get_name_params(self):
+    def _get_params_to_show_in_filename(self):
         name_params = ['cv_loss_function']
         return name_params
 
     def _generate_save_results_filename(self):
-        # few = 6
-        # first_few_letters = slice(0, 6)
-        # estimators_used_in_this_run_string = ''.join([estimator_name[first_few_letters] + '_' for estimator_name in self.estimator_names])
-        # training_size_range_string = 'train:' + self._get_range_of_values_from_a_list(self.training_sizes)
-        #
-        # list_of_parameter_name_and_value_strings = []
-        # for parameter_name_values_dict in self.parameter_grids:
-        #     for parameter_name in parameter_name_values_dict:
-        #         parameter_values_list = parameter_name_values_dict[parameter_name]
-        #         range_of_parameter_values_string = self._get_range_of_values_from_a_list(parameter_values_list) + '_'
-        #         parameter_name_and_value_string = parameter_name[first_few_letters] + delim + range_of_parameter_values_string
-        #         list_of_parameter_name_and_value_strings.append(parameter_name_and_value_string)
-        #
-        # file_string = estimators_used_in_this_run_string + ''.join(list_of_parameter_name_and_value_strings) \
-        #               + training_size_range_string + '.dat'
         file_string = self.get_display_name()
         file_string += '.dat'
         return self.date_string + '/' + file_string
@@ -159,7 +167,7 @@ class Configs(BaseConfigs):
     def get_display_name(self):
         delim = ','
         name = self.estimator_name
-        name_params = self._get_name_params()
+        name_params = self._get_params_to_show_in_filename()
         for param in name_params:
             value = str(getattr(self, param))
             name += delim + param + '=' + value
