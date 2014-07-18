@@ -13,7 +13,7 @@ class Visualization(object):
 
     def __init__(self, configs):
         self.fig_number = 1
-        self.colors = ['r', 'g', 'y', 'k', 'm', 'c']
+        self.colors = ['r', 'g', 'b', 'y', 'k', 'm', 'c']
         self.color_index = 0
         self.learning_curve_data = Visualization.PlotData()
         self.configs = configs
