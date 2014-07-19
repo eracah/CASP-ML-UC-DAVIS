@@ -6,6 +6,7 @@ from LossFunction import LossFunction
 from Estimator import Estimator
 from Estimator import GuessEstimator
 from Estimator import RankLib
+from Estimator import ScikitLearnEstimator
 import time
 import copy
 
@@ -29,31 +30,17 @@ class BaseConfigs(object):
 
 
 class EstimatorConfigs(BaseConfigs):
-    short_name_dict = {
-        'KNeighborsRegressor': 'KNR',
-        'RandomForestRegressor': 'RFR',
-        'RankLib': 'RL',
-        'Guess': 'Guess',
-        'AdaBoostRegressor': 'ABR',
-        'ExtraTreesRegressor': 'ETR',
-        'GradientBoostingRegressor': 'GBR',
-        'RadiusNeighborsRegressor': 'RNR'
-    }
 
     def __init__(self, estimator, params):
         self.estimator = estimator
         self.params = params
 
     def get_estimator_name(self):
-        if isinstance(self.estimator, Estimator):
-            return self.estimator.get_name()
-        return repr(self.estimator).split('(')[0]
+        return self.estimator.get_name()
 
     @property
     def estimator_short_name(self):
-        name = self.get_estimator_name()
-
-        return EstimatorConfigs.short_name_dict[name]
+        return self.estimator.get_short_name()
 
     def get_display_name(self, configs):
         name_params = configs.get_name_params()
@@ -68,9 +55,9 @@ class BatchConfigs(BaseConfigs):
     @staticmethod
     def create_batch_configs():
         batch_configs = BatchConfigs()
-        knr_configs = EstimatorConfigs(KNeighborsRegressor(),
+        knr_configs = EstimatorConfigs(ScikitLearnEstimator(KNeighborsRegressor()),
                                        {'n_neighbors': [1, 2, 3, 5, 9]})
-        rfr_configs = EstimatorConfigs(RandomForestRegressor(n_estimators=16),
+        rfr_configs = EstimatorConfigs(ScikitLearnEstimator(RandomForestRegressor(n_estimators=16)),
                                        {'max_depth': [5, 10, 20, 40, 80, None]})
         rl_configs = EstimatorConfigs(RankLib(),
                                       {'k': [5]})
@@ -122,7 +109,7 @@ class VisualizationConfigs(BaseConfigs):
 
 class Configs(BaseConfigs):
     def __init__(self, **kwargs):
-        self.estimator_configs = EstimatorConfigs(KNeighborsRegressor(), {'n_neighbors': [1, 2, 3, 7, 13, 21]})
+        self.estimator_configs = EstimatorConfigs(ScikitLearnEstimator(KNeighborsRegressor()), {'n_neighbors': [1, 2, 3, 7, 13, 21]})
         t = time.localtime()
         self.date_string = str(t.tm_mon) + '-' + str(t.tm_mday) + '-' + str(t.tm_year)
         self.path_to_targets = './Targets/'

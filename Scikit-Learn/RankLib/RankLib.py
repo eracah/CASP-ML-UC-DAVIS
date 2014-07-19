@@ -1,13 +1,9 @@
 __author__ = 'Aubrey'
 
-import os
-import abc
 import numpy as np
 import subprocess
 from HelperFunctions import make_dir_for_file_name
 from HelperFunctions import check_input
-import Learn
-import random
 
 
 class RankLibConfigs(object):
@@ -45,7 +41,7 @@ def load_letor_scores(file_name, num_instances):
 def run_ranking(configs):
     k = configs.k
     num_folds = 5
-    ranker_opt = '0'
+    ranker_opt = configs.ranker_opt
     metric_opt = 'P@' + str(k)
     score_max = 1
     args = [
@@ -53,9 +49,9 @@ def run_ranking(configs):
         '-jar',
         'RankLib/RankLib-2.1-patched.jar',
         '-ranker',
-        ranker_opt,
+        str(ranker_opt),
         '-metric2t',
-        metric_opt,
+        str(metric_opt),
         '-gmax',
         str(score_max),
         '-tree',
