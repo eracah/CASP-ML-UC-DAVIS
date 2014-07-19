@@ -129,7 +129,7 @@ class Learn():
 
                             cv_train_x, cv_train_y, _, cv_train_target_ids = self.data.select_targets(cv_train_targets)
                             cv_test_x, cv_test_y, _, cv_test_target_ids = self.data.select_targets(cv_test_targets)
-
+                            #TODO: estimator_configs.estimator.set_params('n_cores': configs.n_cores )
                             for param_index, params in enumerate(param_grid):
                                 estimator_configs.estimator.set_params(**params)
                                 if isinstance(estimator_configs.estimator,Estimator):

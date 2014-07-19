@@ -5,7 +5,7 @@ try:
     from Learn import Learn
 except:
     system('module load python matplotlib python-libs/2.7.5')
-    system('module load python')
+    system('module load python matplotlib')
     try:
         from Learn import Learn
     except:
