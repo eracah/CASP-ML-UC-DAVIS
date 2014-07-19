@@ -27,7 +27,6 @@ def main_results_exist(configs):
 
 def recall_main_results(configs):
     file_name = create_main_result_file_name(configs)
-    file_name = './Results/Data/7-18-2014/RFR,cv_loss_function=P.dat'
     with open(file_name, 'rb') as f:
         return pickle.load(f)
 
