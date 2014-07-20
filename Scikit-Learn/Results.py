@@ -72,12 +72,8 @@ class TrainingSampleResult(object):
         train_targets = fold.train_targets
         x_train, y_train, _, train_target_ids = data.select_targets(train_targets)
 
-        if isinstance(fold.estimator,Estimator):
-            fold.test_predicted_values = fold.estimator.predict(x_test, y_test, test_target_ids)
-            fold.train_predicted_values = fold.estimator.predict(x_train, y_train, train_target_ids)
-        else:
-            fold.test_predicted_values = fold.estimator.predict(x_test)
-            fold.train_predicted_values = fold.estimator.predict(x_train)
+        fold.test_predicted_values = fold.estimator.predict(x_test, y_test, test_target_ids)
+        fold.train_predicted_values = fold.estimator.predict(x_train, y_train, train_target_ids)
         fold.train_actual_values = y_train
         fold.test_actual_values = y_test
         fold.test_inds = test_inds

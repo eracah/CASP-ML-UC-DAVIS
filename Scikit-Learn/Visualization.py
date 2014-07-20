@@ -46,8 +46,6 @@ class Visualization(object):
         if do_scatter_plot:
             plt.scatter(x, y, c=self.new_color(), alpha=alpha)
         else:
-            # plt.plot(x, y, c=self.new_color(), alpha=alpha, lw=5)
-            # plt.plot(x, y, **line_args)
             plt.errorbar(x, y, yerr=y_vars, **line_args)
         legend.append(estimator_name + ' ' + y_name)
         return legend
