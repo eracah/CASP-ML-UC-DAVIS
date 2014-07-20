@@ -129,6 +129,7 @@ class Configs(BaseConfigs):
         self.cv_loss_function = LossFunction(LossFunction.PRECISION)
         self.params_to_vary = []
         self.use_ranks_for_y = False
+        self.normalize_data = True
         #Try to apply local Configs
 
         self.update_configs(**kwargs)
@@ -144,7 +145,7 @@ class Configs(BaseConfigs):
         self.recall_results_file_name = self.save_results_file_name
 
     def _get_params_to_show_in_filename(self):
-        name_params = ['cv_loss_function']
+        name_params = ['cv_loss_function', 'normalize_data']
         return name_params
 
     def _generate_save_results_filename(self):

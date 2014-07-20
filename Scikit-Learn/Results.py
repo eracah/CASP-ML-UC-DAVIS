@@ -11,6 +11,7 @@ from Configs.Configs import Configs
 from LossFunction import LossFunction
 from HelperFunctions import save_object
 from Estimator import Estimator
+from sklearn.preprocessing import StandardScaler
 
 
 class FoldData(object):
@@ -71,6 +72,9 @@ class TrainingSampleResult(object):
         fold = self.fold_data[index]
         train_targets = fold.train_targets
         x_train, y_train, _, train_target_ids = data.select_targets(train_targets)
+
+        x_train = fold.normalizer.transform(x_train)
+        x_test = fold.normalizer.transform(x_test)
 
         fold.test_predicted_values = fold.estimator.predict(x_test, y_test, test_target_ids)
         fold.train_predicted_values = fold.estimator.predict(x_train, y_train, train_target_ids)
@@ -140,23 +144,17 @@ class MainResult(object):
     def get_mean_feature_importance(self):
         print self.feature_importances
         return np.mean(self.feature_importances, axis=0)
-    def add_estimator_results(self, estimator_name, training_size, estimator, train_inds,
-                              train_targets, time_to_fit, trial, trials_per_size, feature_importances):
+    def add_estimator_results(self, fold_data, trial, trials_per_size, feature_importances):
         if len(feature_importances) > 0:
             self.feature_importances = np.concatenate((self.feature_importances, feature_importances),axis=0)
         # adds training results to the EstimatorResult object for the corresponding correct estimator_name
-        fold_data = FoldData()
-        fold_data.training_size = training_size
-        fold_data.estimator = estimator
-        fold_data.train_inds = train_inds
-        fold_data.train_targets = train_targets
-        fold_data.time_to_fit = time_to_fit
 
-        self.estimator_results.add_training_results(training_size,
-                                                     fold_data,
-                                                     trial,
-                                                     trials_per_size,
-                                                     self.data)
+
+        self.estimator_results.add_training_results(fold_data.training_size,
+                                                    fold_data,
+                                                    trial,
+                                                    trials_per_size,
+                                                    self.data)
 
     #TODO: Move this outside of this class
     def save_data(self):
