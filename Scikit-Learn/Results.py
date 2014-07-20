@@ -11,7 +11,7 @@ from Configs.Configs import Configs
 from LossFunction import LossFunction
 from HelperFunctions import save_object
 from Estimator import Estimator
-from scipy import stats
+
 
 class FoldData(object):
     pass
@@ -67,11 +67,7 @@ class TrainingSampleResult(object):
         self.test_error = test_perf
 
     def _generate_predictions(self, data, index):
-        #self.data_dict['train_actual_values'] = self.y_trains
-        x_test, y_test, test_inds, test_target_ids = data.select_targets(data.test_targets)
-        #no need to normalize here
-        #TODO: Normalize x_test here
-        # x_test = stats.zscore(x_test, axis=0)
+        x_test, y_test, test_inds, test_target_ids = data.get_test_data()
         fold = self.fold_data[index]
         train_targets = fold.train_targets
         x_train, y_train, _, train_target_ids = data.select_targets(train_targets)

@@ -111,6 +111,7 @@ class Configs(BaseConfigs):
     def __init__(self, **kwargs):
         self.estimator_configs = EstimatorConfigs(ScikitLearnEstimator(KNeighborsRegressor()), {'n_neighbors': [1, 2, 3, 7, 13, 21]})
         t = time.localtime()
+        self.input_dim = 68
         self.date_string = str(t.tm_mon) + '-' + str(t.tm_mday) + '-' + str(t.tm_year)
         self.path_to_targets = './Targets/'
         self.path_to_store_results = './Results/Data/'
@@ -126,7 +127,6 @@ class Configs(BaseConfigs):
         self.load_target_data = False
         self.save_the_results = True
         self.cv_loss_function = LossFunction(LossFunction.PRECISION)
-        self.use_grid_search_cv = False
         self.params_to_vary = []
         self.use_ranks_for_y = False
         #Try to apply local Configs
