@@ -9,9 +9,12 @@ import copy
 from sklearn import cross_validation
 from sklearn.grid_search import ParameterGrid
 from Results import MainResult
+from Results import FoldData
 from LossFunction import LossFunction
 from Estimator import Estimator
 import HelperFunctions
+
+from sklearn.preprocessing import StandardScaler
 
 from multiprocessing import Pool
 import scipy.stats as ss
@@ -50,6 +53,9 @@ class Learn():
                 for i in range(len(param_grid)):
                     cv_scores.append([])
 
+                normalizer = StandardScaler()
+                if not self.config.normalize_data:
+                    normalizer = StandardScaler(with_mean=False, with_std=False)
                 if len(param_grid) == 1:
                     best_param_index = 0
                 else:
@@ -59,6 +65,10 @@ class Learn():
 
                         cv_train_x, cv_train_y, _, cv_train_target_ids = self.data.select_targets(cv_train_targets)
                         cv_test_x, cv_test_y, _, cv_test_target_ids = self.data.select_targets(cv_test_targets)
+
+                        cv_train_x = normalizer.fit_transform(cv_train_x)
+                        cv_test_x = normalizer.transform(cv_test_x)
+
                         #TODO: estimator_configs.estimator.set_params('n_cores': configs.n_cores )
                         for param_index, params in enumerate(param_grid):
                             estimator_configs.estimator.set_params(**params)
@@ -88,6 +98,8 @@ class Learn():
                 t0 = time.time()
                 #fit estimator with best parameters to training data
                 best_estimator.clear_cv_data()
+
+                x_train = normalizer.fit_transform(x_train)
                 best_estimator.fit(x_train, y_train, self.data.get_target_ids(train_indices))
 
                 if hasattr(best_estimator, 'feature_importances_'):
@@ -99,15 +111,16 @@ class Learn():
                 print 'training size: ', training_size, '. best parameter value', ': ', best_params, '. time_to_fit:', time_to_fit
                 print 'search time ', search_time
 
-
+                fold_data = FoldData()
+                fold_data.training_size = training_size
+                fold_data.estimator = best_estimator
+                fold_data.train_inds = train_indices
+                fold_data.train_targets = train_targets
+                fold_data.time_to_fit = time_to_fit
+                fold_data.normalizer = normalizer
 
                 #add grid_search results to main results to be further processed
-                self.main_results.add_estimator_results(self.estimator_name,
-                                                        training_size,
-                                                        best_estimator,
-                                                        train_indices,
-                                                        train_targets,
-                                                        time_to_fit,
+                self.main_results.add_estimator_results(fold_data,
                                                         trial,
                                                         self.config.trials_per_size,
                                                         feature_importances)

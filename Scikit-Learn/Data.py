@@ -4,12 +4,14 @@ import glob
 import numpy as np
 import pickle
 from sklearn.cross_validation import train_test_split
-from sklearn.preprocessing import StandardScaler
 import random
 
 # Version number to prevent loading out of data data
 DATA_VERSION = 1
 
+class TrainTestData(object):
+    def __init__(self):
+        pass
 
 class Data(object):
 
@@ -18,8 +20,6 @@ class Data(object):
         self.input_array = np.zeros((0, configs.input_dim))
         self.output_array = np.zeros(0)
         self.target_ids = np.zeros(0,dtype=int)
-        self.normalizer = StandardScaler()
-
         self._load_data(configs)
         self.train_target_indices, self.test_target_indices = self._get_test_and_train(configs.test_size)
 
@@ -49,17 +49,11 @@ class Data(object):
 
     def get_test_data(self):
         x_test, y_test, test_inds, test_target_ids = self.select_targets(self.test_target_indices)
-        #normalize x using same mean and variance from x_train
-        x_test = self.normalizer.transform(x_test)
         return x_test, y_test, test_inds, test_target_ids
 
     def sample_train(self, num_train):
         train_targets = random.sample(self.train_target_indices, num_train)
         train_x, train_y, selected_inds, _ = self.select_targets(train_targets)
-
-        #normalize x-train
-        self.normalizer = self.normalizer.fit(train_x)
-        train_x = self.normalizer.transform(train_x)
         return train_x, train_y, selected_inds, train_targets
 
     def get_target_ids(self, inds):
