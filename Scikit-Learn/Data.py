@@ -78,10 +78,6 @@ class Data(object):
             self.output_array = np.concatenate((self.output_array, target[:, -1]))
             #make a column vector with the target id number
             self.target_ids = np.concatenate((self.target_ids, (target_id_counter + 1) * np.ones(num_models, dtype=int)))
-
-
-        with open(configs.target_data_file_name, 'wb') as f:
-            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
         self.assert_version()
 
 

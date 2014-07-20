@@ -11,8 +11,12 @@ from sklearn.grid_search import ParameterGrid
 from Results import MainResult
 from LossFunction import LossFunction
 from Estimator import Estimator
-from Data import Data
+import HelperFunctions
 
+from multiprocessing import Pool
+import scipy.stats as ss
+
+from Data import Data
 
 class Learn():
     def __init__(self, config):
@@ -75,20 +79,16 @@ class Learn():
                                                                        cv_test_target_ids, self.config.cv_loss_function)
                             cv_scores[param_index].append(score)
                         best_param_index = self._get_best_param_index(cv_scores)
-                    best_params = param_grid[best_param_index]
-                    best_estimator = copy.deepcopy(estimator_configs.estimator)
-                    best_estimator.set_params(**best_params)
+                best_params = param_grid[best_param_index]
+                best_estimator = copy.deepcopy(estimator_configs.estimator)
+                best_estimator.set_params(**best_params)
 
                 search_time = time.time() - t0
 
                 t0 = time.time()
                 #fit estimator with best parameters to training data
-
-                if isinstance(best_estimator, Estimator):
-                    best_estimator.clear_cv_data()
-                    best_estimator.fit(x_train, y_train, self.data.get_target_ids(train_indices))
-                else:
-                    best_estimator.fit(x_train, y_train)
+                best_estimator.clear_cv_data()
+                best_estimator.fit(x_train, y_train, self.data.get_target_ids(train_indices))
 
                 if hasattr(best_estimator, 'feature_importances_'):
                     feature_importances = best_estimator.feature_importances_
@@ -118,7 +118,21 @@ class Learn():
 
         return self.main_results
 
-    def _get_best_param_index(self, all_scores):
+    def _train_and_test_with_params(self,
+                                    train_x, train_y, train_target_ids,
+                                    test_x, test_y, test_target_ids,
+                                    estimator_configs,
+                                    estimator_params):
+        estimator = copy.deepcopy(estimator_configs.estimator)
+        estimator.set_params(**estimator_params)
+        estimator.set_cv_data(test_x, test_y, test_target_ids)
+        estimator.fit(train_x, train_y, train_target_ids)
+        cv_test_pred = estimator.predict(test_x, test_y, test_target_ids)
+        score = LossFunction.compute_loss_function(cv_test_pred, test_y,
+                                                   test_target_ids, self.config.cv_loss_function)
+        return score
+
+    def _get_best_param_index(self,all_scores):
         mean_scores = []
         for index, scores in enumerate(all_scores):
             mean_scores.append(np.asarray(scores).mean())
@@ -134,6 +148,7 @@ class Learn():
                 data = pickle.load(f)
         else:
             data = Data(configs)
+            HelperFunctions.save_object(data, data_file_name)
         return data
 
 
