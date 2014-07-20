@@ -10,6 +10,8 @@ except:
         from Learn import Learn
     except:
         sys.exit('Rehan recommends getting Scikit-Learn')
+        # Import again to potentially get a useful error message
+        from Learn import Learn
 
 from Visualization import Visualization
 import Configs.Configs as cfg
