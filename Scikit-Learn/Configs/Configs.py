@@ -63,7 +63,7 @@ class BatchConfigs(BaseConfigs):
                                       {'k': [5]})
         guess_configs = EstimatorConfigs(GuessEstimator(),
                                          {'unused': [0]})
-        estimator_configs = [guess_configs, rl_configs, knr_configs, rfr_configs]
+        estimator_configs = [guess_configs, knr_configs, rfr_configs, rl_configs]
 
         if imported_override:
             estimator_configs = OverrideConfigs.apply_estimator_overrides(estimator_configs)
