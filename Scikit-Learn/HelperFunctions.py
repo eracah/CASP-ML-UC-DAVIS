@@ -32,3 +32,6 @@ def load_object(file_name):
 def check_input(*args):
     for arg in args[1:]:
         assert args[0].shape[0] == arg.shape[0]
+
+def flatten_list_of_lists(list):
+    return [item for sublist in list for item in sublist]

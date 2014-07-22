@@ -42,12 +42,6 @@ class EstimatorConfigs(BaseConfigs):
     def estimator_short_name(self):
         return self.estimator.get_short_name()
 
-    def get_display_name(self, configs):
-        name_params = configs.get_name_params()
-        for param in name_params:
-            value = getattr(configs, param)
-
-
 class BatchConfigs(BaseConfigs):
     def __init__(self):
         self.all_configs = []
@@ -56,11 +50,21 @@ class BatchConfigs(BaseConfigs):
     def create_batch_configs():
         batch_configs = BatchConfigs()
         knr_configs = EstimatorConfigs(ScikitLearnEstimator(KNeighborsRegressor()),
-                                       {'n_neighbors': [1, 2, 3, 5, 9]})
+                                       {
+                                           'n_neighbors': [1, 2, 3, 5, 9]
+                                       })
         rfr_configs = EstimatorConfigs(ScikitLearnEstimator(RandomForestRegressor(n_estimators=16)),
-                                       {'max_depth': [5, 10, 20, 40, 80, None]})
-        rl_configs = EstimatorConfigs(RankLib(),
-                                      {'k': [5]})
+                                       {
+                                           'max_depth': [5, 10, 20, 40, 80, None]
+                                       })
+        rl_configs = EstimatorConfigs(RankLib(make_score_binary_at_k=False,
+                                              k=5,
+                                              tree=200,
+                                              shrinkage=.1,
+                                              estop=50),
+                                      {
+                                          'leaf': [2, 5, 10],
+                                      })
         guess_configs = EstimatorConfigs(GuessEstimator(),
                                          {'unused': [0]})
         estimator_configs = [guess_configs, knr_configs, rfr_configs, rl_configs]
@@ -101,11 +105,17 @@ class VisualizationConfigs(BaseConfigs):
         self.viz_loss_function = LossFunction(LossFunction.PRECISION)
         self.path_to_store_graphs = './Results/Plots/'
         self.show_train = True
+        self.show_runtime = False
         if imported_override:
             OverrideConfigs.apply_viz_overrides(self)
         else:
             print('Couldn''t find OverrideConfigs.py')
 
+    def set_runtime_configs(self):
+        del self.viz_loss_function
+        self.show_train = False
+        self.show_runtime = True
+        self.y_attribute = 'cv_time'
 
 class Configs(BaseConfigs):
     def __init__(self, **kwargs):
@@ -130,6 +140,8 @@ class Configs(BaseConfigs):
         self.params_to_vary = []
         self.use_ranks_for_y = False
         self.normalize_data = True
+        self.num_cv_processes = 1
+        self.use_cv_pool = self.num_cv_processes > 1
         #Try to apply local Configs
 
         self.update_configs(**kwargs)
@@ -145,7 +157,7 @@ class Configs(BaseConfigs):
         self.recall_results_file_name = self.save_results_file_name
 
     def _get_params_to_show_in_filename(self):
-        name_params = ['cv_loss_function', 'normalize_data']
+        name_params = ['cv_loss_function', 'normalize_data', 'num_cv_processes']
         return name_params
 
     def _generate_save_results_filename(self):

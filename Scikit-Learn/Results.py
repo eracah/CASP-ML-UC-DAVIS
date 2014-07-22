@@ -28,6 +28,8 @@ class TrainingSampleResult(object):
         self.test_error = 0
         self.train_error = 0
 
+    def get_fold_data_attributes(self, attribute):
+        return [getattr(data,attribute) for data in self.fold_data]
 
     def add_sample_results(self, fold_data, data):
         self.fold_data.append(fold_data)
@@ -60,12 +62,14 @@ class TrainingSampleResult(object):
                                                                   test_actual[index],
                                                                   test_target_ids,
                                                                   results_loss_function)
+            self.fold_data[index].train_error = train_perf[index]
+            self.fold_data[index].test_error = test_perf[index]
         self.test_actual = test_actual
         self.train_actual = train_actual
         self.test_predicted = test_predicted
         self.train_predicted = train_predicted
-        self.train_error = train_perf
-        self.test_error = test_perf
+        # self.train_error = train_perf
+        # self.test_error = test_perf
 
     def _generate_predictions(self, data, index):
         x_test, y_test, test_inds, test_target_ids = data.get_test_data()
@@ -76,12 +80,18 @@ class TrainingSampleResult(object):
         x_train = fold.normalizer.transform(x_train)
         x_test = fold.normalizer.transform(x_test)
 
-        fold.test_predicted_values = fold.estimator.predict(x_test, y_test, test_target_ids)
+
+        train_predict_start_time = time.time()
         fold.train_predicted_values = fold.estimator.predict(x_train, y_train, train_target_ids)
+        fold.train_predict_time = time.time() - train_predict_start_time
+        test_predict_start_time = time.time()
+        fold.test_predicted_values = fold.estimator.predict(x_test, y_test, test_target_ids)
+        fold.test_predict_time = time.time() - test_predict_start_time
         fold.train_actual_values = y_train
         fold.test_actual_values = y_test
         fold.test_inds = test_inds
-
+        print '\ttrain predict time: ', fold.train_predict_time
+        print '\ttest predict time: ', fold.test_predict_time
         # Hacky solution to result file size - the grid search object is very large
         # Better to just not make estimator an attribute in the first place
         del fold.estimator
@@ -105,8 +115,10 @@ class EstimatorResult(object):
     def get_aggregated_data(self, data_name, sizes):
         training_sample_results = [self.training_sample_dict[size] for size in sizes]
         #must have axis=0 so we average arrays of arrays and get out an array instead of one value
-        means = [getattr(obj, data_name).mean(axis=0) for obj in training_sample_results]
-        variances = [getattr(obj, data_name).var() for obj in training_sample_results]
+        all_data = [r.get_fold_data_attributes(data_name) for r in training_sample_results]
+        all_data = [np.asarray(sublist) for sublist in all_data]
+        means = [obj.mean(axis=0) for obj in all_data]
+        variances = [obj.var() for obj in all_data]
         return means, variances
 
     def get_plot_arrays(self, sizes, names):

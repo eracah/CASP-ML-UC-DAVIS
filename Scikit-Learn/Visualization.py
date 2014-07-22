@@ -15,16 +15,24 @@ class Visualization(object):
         self.fig_number = 1
         self.colors = ['r', 'g', 'b', 'y', 'k', 'm', 'c']
         self.color_index = 0
-        self.learning_curve_data = Visualization.PlotData()
+        self.plot_data = Visualization.PlotData()
         self.configs = configs
         self.path = self.configs.path_to_store_graphs
         self.date = self.configs.date_string
-        self.prepare_learning_curve_plot()
+
+        if configs.show_runtime:
+            plot_title = 'Runtime'
+            y_label = self.configs.y_attribute
+        else:
+            plot_title = 'Learning_Curve'
+            y_label = self.configs.viz_loss_function.get_display_name()
+        self.prepare_2d_plot(plot_title, y_label)
 
     def _set_results(self, main_result_obj):
         self.results_obj = main_result_obj
-        self.results_obj.configs.results_loss_function = self.configs.viz_loss_function
-        self.results_obj.generate_performance_results()
+        if hasattr(self.configs,'viz_loss_function'):
+            self.results_obj.configs.results_loss_function = self.configs.viz_loss_function
+            self.results_obj.generate_performance_results()
 
     def plot_all(self):
         pass
@@ -50,13 +58,13 @@ class Visualization(object):
         legend.append(estimator_name + ' ' + y_name)
         return legend
 
-    def prepare_learning_curve_plot(self):
-        self.learning_curve_data.plot_string = 'Learning_Curve'
-        self.learning_curve_data.legend_list = []
-        self.learning_curve_data.file_name = self.path + '/' + self.date + '/' + \
-                                             self.learning_curve_data.plot_string + '.jpg'
-        self.learning_curve_data.x_label = 'Training Size (Number of Targets)'
-        self.learning_curve_data.y_label = self.configs.viz_loss_function.get_display_name()
+    def prepare_2d_plot(self, plot_title, y_label):
+        self.plot_data.plot_string = plot_title
+        self.plot_data.legend_list = []
+        self.plot_data.file_name = self.path + '/' + self.date + '/' + \
+                                   self.plot_data.plot_string + '.jpg'
+        self.plot_data.x_label = 'Training Size (Number of Targets)'
+        self.plot_data.y_label = y_label
         plt.figure(self.fig_number)
 
     def add_to_learning_curve_plot(self, main_results):
@@ -67,25 +75,33 @@ class Visualization(object):
         train_line_style = 'dashed'
         test_line_style = 'solid'
         line_args = {
-            'c' : self.new_color(),
-            'alpha' : 1,
-            'lw' : 2,
-            'linestyle' : test_line_style,
-            'capsize' : 20
+            'c': self.new_color(),
+            'alpha': 1,
+            'lw': 2,
+            'linestyle': test_line_style,
+            'capsize': 20
         }
-        l1 = self.scatter_data(estimator_name, training_sizes, 'training_size', 'test_error', line_args)
+        if self.configs.show_runtime:
+            y_attributes = [self.configs.y_attribute, self.configs.y_attribute]
+        else:
+            y_attributes = ['test_error', 'train_error']
+        l1 = self.scatter_data(estimator_name, training_sizes, 'training_size', y_attributes[0], line_args)
+        self.plot_data.legend_list += l1
         line_args['linestyle'] = train_line_style
-        l2 = self.scatter_data(estimator_name, training_sizes, 'training_size', 'train_error', line_args)
-        self.learning_curve_data.legend_list += l1 + l2
+        if self.configs.show_train:
+            l2 = self.scatter_data(estimator_name, training_sizes, 'training_size', y_attributes[1], line_args)
+            self.plot_data.legend_list += l2
 
     def finish_learning_curve_plot(self):
-        self.set_plot_captions(self.learning_curve_data.plot_string,
-                               self.learning_curve_data.x_label,
-                               self.learning_curve_data.y_label,
-                               legend_list=self.learning_curve_data.legend_list)
+        self.set_plot_captions(self.plot_data.plot_string,
+                               self.plot_data.x_label,
+                               self.plot_data.y_label,
+                               legend_list=self.plot_data.legend_list)
 
-        make_dir_for_file_name(self.learning_curve_data.file_name)
-        plt.savefig(self.learning_curve_data.file_name)
+        if self.configs.show_runtime:
+            plt.ylim([0, 300])
+        make_dir_for_file_name(self.plot_data.file_name)
+        plt.savefig(self.plot_data.file_name)
 
         self.fig_number += 1
 

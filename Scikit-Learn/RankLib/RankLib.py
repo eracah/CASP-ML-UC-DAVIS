@@ -2,9 +2,9 @@ __author__ = 'Aubrey'
 
 import numpy as np
 import subprocess
+import os
 from HelperFunctions import make_dir_for_file_name
 from HelperFunctions import check_input
-
 
 class RankLibConfigs(object):
     def __init__(self):
@@ -40,10 +40,8 @@ def load_letor_scores(file_name, num_instances):
 
 def run_ranking(configs):
     k = configs.k
-    num_folds = 5
     ranker_opt = configs.ranker_opt
     metric_opt = 'P@' + str(k)
-    score_max = 1
     args = [
         'java',
         '-jar',
@@ -52,12 +50,14 @@ def run_ranking(configs):
         str(ranker_opt),
         '-metric2t',
         str(metric_opt),
-        '-gmax',
-        str(score_max),
         '-tree',
-        '500',
+        str(configs.tree),
         '-estop',
-        '50'
+        str(configs.estop),
+        '-leaf',
+        str(configs.leaf),
+        '-shrinkage',
+        str(configs.shrinkage)
     ]
     if hasattr(configs, 'model_file_name'):
         args.append('-load')
@@ -80,6 +80,6 @@ def run_ranking(configs):
         args.append(configs.test_file_name)
         args.append('-score')
         args.append(configs.score_file_name)
-    ret_val = subprocess.call(args)
+    ret_val = subprocess.call(args,
+                              stdout=open(os.devnull, 'wb'))
     assert ret_val == 0
-    pass

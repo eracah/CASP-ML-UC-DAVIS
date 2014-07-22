@@ -4,6 +4,7 @@ import abc
 import numpy as np
 import random
 import copy
+import multiprocessing
 from RankLib.RankLib import save_in_letor_format
 from RankLib.RankLib import load_letor_scores
 from RankLib.RankLib import run_ranking
@@ -90,12 +91,15 @@ class GuessEstimator(Estimator):
         return 'Guess'
 
 
-train_file_name = 'RankLib/Data/letor_train.txt'
-test_file_name = 'RankLib/Data/letor_test.txt'
-model_file_name = 'RankLib/Data/letor_model.txt'
-score_file_name = 'RankLib/Data/letor_score.txt'
-cv_file_name = 'RankLib/Data/letor_cv.txt'
+train_file_name = 'RankLib/Data/letor_train_'
+test_file_name = 'RankLib/Data/letor_test_'
+model_file_name = 'RankLib/Data/letor_model_'
+score_file_name = 'RankLib/Data/letor_score_'
+cv_file_name = 'RankLib/Data/letor_cv_'
 
+def get_unique_file_name(file_name):
+    current = multiprocessing.current_process()
+    return file_name + current.name + '.txt'
 
 class RankLib(Estimator):
     _ranker_opt_name_dict = {
@@ -120,32 +124,39 @@ class RankLib(Estimator):
         8: 'RF'
     }
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.rl_configs = RankLibConfigs()
         self.rl_configs.k = 5
         self.rl_configs.ranker_opt = 0
+        for k, v in kwargs.items():
+            setattr(self.rl_configs, k, v)
         pass
 
     def set_params(self, **kwargs):
         for k, v in kwargs.items():
-            setattr(self, k, v)
+            setattr(self.rl_configs, k, v)
 
     def fit(self, X, Y, target_ids):
+        current = multiprocessing.current_process()
         check_input(X, Y, target_ids)
-        Y_01 = Learn.Data.make_score_0_1(Y, target_ids, self.k)
-        save_in_letor_format(X, Y_01, target_ids, train_file_name)
+        if self.rl_configs.make_score_binary_at_k:
+            Y = Learn.Data.make_score_0_1(Y, target_ids, self.rl_configs.k)
+        train_file = get_unique_file_name(train_file_name)
+        model_file = get_unique_file_name(model_file_name)
+        save_in_letor_format(X, Y, target_ids, train_file)
         rl_configs = copy.deepcopy(self.rl_configs)
-        rl_configs.train_file_name = train_file_name
-        rl_configs.save_file_name = model_file_name
+        rl_configs.train_file_name = train_file
+        rl_configs.save_file_name = model_file
         if hasattr(self, 'cv_file_name'):
             rl_configs.cv_file_name = self.cv_file_name
         run_ranking(rl_configs)
 
     def set_cv_data(self, X, Y, target_ids):
-        self.cv_file_name = cv_file_name
+        self.cv_file_name = get_unique_file_name(cv_file_name)
         check_input(X, Y, target_ids)
-        Y_01 = Learn.Data.make_score_0_1(Y, target_ids, self.k)
-        save_in_letor_format(X, Y_01, target_ids, cv_file_name)
+        if self.rl_configs.make_score_binary_at_k:
+            Y = Learn.Data.make_score_0_1(Y, target_ids, self.rl_configs.k)
+        save_in_letor_format(X, Y, target_ids, self.cv_file_name)
 
 
     def clear_cv_data(self):
@@ -153,13 +164,17 @@ class RankLib(Estimator):
             del self.cv_file_name
 
     def predict(self, X, Y, target_ids):
+        model_file = get_unique_file_name(model_file_name)
+        test_file = get_unique_file_name(test_file_name)
+        score_file = get_unique_file_name(score_file_name)
         check_input(X, Y, target_ids)
-        Y_01 = Learn.Data.make_score_0_1(Y, target_ids, self.k)
-        save_in_letor_format(X, Y_01, target_ids, test_file_name)
+        if self.rl_configs.make_score_binary_at_k:
+            Y = Learn.Data.make_score_0_1(Y, target_ids, self.rl_configs.k)
+        save_in_letor_format(X, Y, target_ids, test_file)
         rl_configs = copy.deepcopy(self.rl_configs)
-        rl_configs.model_file_name = model_file_name
-        rl_configs.test_file_name = test_file_name
-        rl_configs.score_file_name = score_file_name
+        rl_configs.model_file_name = model_file
+        rl_configs.test_file_name = test_file
+        rl_configs.score_file_name = score_file
         run_ranking(rl_configs)
         return load_letor_scores(rl_configs.score_file_name, len(Y))
 
@@ -168,14 +183,6 @@ class RankLib(Estimator):
 
     def get_short_name(self):
         return 'RL-' + RankLib._ranker_opt_short_name_dict[self.ranker_opt]
-
-    @property
-    def k(self):
-        return self.rl_configs.k
-
-    @k.setter
-    def k(self,value):
-        self.rl_configs.k = value
 
     @property
     def ranker_opt(self):
