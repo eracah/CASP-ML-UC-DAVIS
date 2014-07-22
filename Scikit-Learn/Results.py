@@ -144,12 +144,7 @@ class MainResult(object):
     def get_mean_feature_importance(self):
         print self.feature_importances
         return np.mean(self.feature_importances, axis=0)
-    def add_estimator_results(self, fold_data, trial, trials_per_size, feature_importances):
-        if len(feature_importances) > 0:
-            self.feature_importances = np.concatenate((self.feature_importances, feature_importances),axis=0)
-        # adds training results to the EstimatorResult object for the corresponding correct estimator_name
-
-
+    def add_estimator_results(self, fold_data, trial, trials_per_size):
         self.estimator_results.add_training_results(fold_data.training_size,
                                                     fold_data,
                                                     trial,

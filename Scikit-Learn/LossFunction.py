@@ -3,7 +3,7 @@ __author__ = 'Aubrey'
 import numpy as np
 from sklearn import metrics
 import math
-
+import heapq
 
 
 
@@ -73,9 +73,7 @@ class LossFunction:
 
     @staticmethod
     def _get_top_k_vals(vals, k):
-        sorted_inds = vals.argsort()
-        top_k_inds = sorted_inds[:-k - 1:-1]
-        top_k_vals = vals[top_k_inds]
+        top_k_vals = np.asarray(heapq.nlargest(k, vals))
         return top_k_vals
 
     @staticmethod

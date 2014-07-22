@@ -21,7 +21,8 @@ class Data(object):
         self.output_array = np.zeros(0)
         self.target_ids = np.zeros(0,dtype=int)
         self._load_data(configs)
-        self.train_target_indices, self.test_target_indices = self._get_test_and_train(configs.test_size)
+        self.train_target_indices = 0
+        (self.train_target_indices, self.test_target_indices) = self._get_test_and_train(configs.test_size)
 
     def assert_version(self):
         assert self._version == DATA_VERSION
@@ -52,9 +53,9 @@ class Data(object):
         return x_test, y_test, test_inds, test_target_ids
 
     def sample_train(self, num_train):
-        train_targets = random.sample(self.train_target_indices, num_train)
-        train_x, train_y, selected_inds, _ = self.select_targets(train_targets)
-        return train_x, train_y, selected_inds, train_targets
+        selected_target_ids = random.sample(self.train_target_indices, num_train)
+        train_x, train_y, selected_models_indices, _ = self.select_targets(selected_target_ids)
+        return train_x, train_y, selected_models_indices, selected_target_ids
 
     def get_target_ids(self, inds):
         return self.target_ids[inds]
@@ -63,9 +64,9 @@ class Data(object):
         return self.train_target_indices.max()
 
     def _load_data(self, configs):
+          #get array from csv files
         target_files = glob.glob(configs.path_to_targets + '*.csv')
         for target_id_counter, target_file in enumerate(target_files):
-            #get array from csv files
             target = np.genfromtxt(target_file, delimiter=',')
             num_models = target.shape[0]
             self.input_array = np.concatenate((self.input_array, target[:, 0:-1]))

@@ -1,16 +1,13 @@
 __author__ = 'Evan Racah'
 from os import system
-import sys
 try:
     from Learn import Learn
-except:
+except ImportError:
     system('module load python matplotlib python-libs/2.7.5')
     system('module load python matplotlib')
     try:
         from Learn import Learn
-    except:
-        sys.exit('Rehan recommends getting Scikit-Learn')
-        # Import again to potentially get a useful error message
+    except ImportError:
         from Learn import Learn
 
 from Visualization import Visualization
