@@ -42,6 +42,7 @@ if __name__ == "__main__":
 
     t0 = time.time()
     batch_configs = cfg.BatchConfigs.create_batch_configs()
+    # batch_configs = cfg.BatchConfigs.create_batch_configs_for_parallelization([1, 2, 4])
     #for each estimator's conifgs
     for configs in batch_configs.all_configs:
         if configs.we_learn_the_data or not main_results_exist(configs):

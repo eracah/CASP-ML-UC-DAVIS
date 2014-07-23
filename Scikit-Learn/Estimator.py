@@ -5,6 +5,8 @@ import numpy as np
 import random
 import copy
 import multiprocessing
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.ensemble import RandomForestRegressor
 from RankLib.RankLib import save_in_letor_format
 from RankLib.RankLib import load_letor_scores
 from RankLib.RankLib import run_ranking
@@ -75,6 +77,14 @@ class ScikitLearnEstimator(Estimator):
     def set_params(self, **kwargs):
         self.skl_estimator.set_params(**kwargs)
 
+class ScitkitLearnKNeighborsRegressor(ScikitLearnEstimator):
+    def __init__(self):
+        self.skl_estimator = KNeighborsRegressor()
+
+class ScitkitLearnRandomForestRegressor(ScikitLearnEstimator):
+
+    def __init__(self, n_estimators=16):
+        self.skl_estimator = RandomForestRegressor(n_estimators=n_estimators)
 
 class GuessEstimator(Estimator):
     def fit(self, X, Y, target_ids):
@@ -124,13 +134,20 @@ class RankLib(Estimator):
         8: 'RF'
     }
 
-    def __init__(self, **kwargs):
+    def __init__(self,
+                 ranker_opt=0,
+                 make_score_binary_at_k=False,
+                 k=5,
+                 tree=200,
+                 shrinkage=.1,
+                 estop=50):
         self.rl_configs = RankLibConfigs()
-        self.rl_configs.k = 5
-        self.rl_configs.ranker_opt = 0
-        for k, v in kwargs.items():
-            setattr(self.rl_configs, k, v)
-        pass
+        self.rl_configs.k = k
+        self.rl_configs.ranker_opt = ranker_opt
+        self.rl_configs.make_score_binary_at_k = make_score_binary_at_k
+        self.rl_configs.tree = tree
+        self.rl_configs.shrinkage = shrinkage
+        self.rl_configs.estop = estop
 
     def set_params(self, **kwargs):
         for k, v in kwargs.items():

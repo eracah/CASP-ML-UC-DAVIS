@@ -69,7 +69,7 @@ class Visualization(object):
 
     def add_to_learning_curve_plot(self, main_results):
         self._set_results(main_results)
-        estimator_name = self.results_obj.estimator_name
+        estimator_name = self.results_obj.configs.estimator_configs.estimator_short_name
         training_sizes = self.results_obj.configs.training_sizes
 
         train_line_style = 'dashed'

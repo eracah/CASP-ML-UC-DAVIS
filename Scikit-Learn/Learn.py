@@ -48,8 +48,8 @@ class Learn():
         self.estimator_configs = configs.estimator_configs
         self.estimator_name = configs.estimator_name
         # instantiate a main result object
-        self.main_results = MainResult(self.estimator_name, self.configs.path_to_store_results,
-                                       self.configs.save_results_file_name)
+        self.main_results = MainResult(configs)
+        self.main_results.data = self.data
 
 
         if isinstance(self.estimator_configs.estimator, ScikitLearnEstimator) and \
@@ -59,8 +59,6 @@ class Learn():
 
 
     def run_grid_search(self):
-
-        self.main_results.data = self.data
         num_processes = self.configs.num_cv_processes
         use_cv_pool = self.configs.use_cv_pool
         pool = Pool(processes=num_processes)
@@ -162,7 +160,6 @@ class Learn():
                                                         trial,
                                                         self.configs.trials_per_size)
 
-        self.main_results.configs = self.configs
         if self.configs.save_the_results:
             self.main_results.save_data()
 

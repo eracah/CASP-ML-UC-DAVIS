@@ -6,7 +6,8 @@ from LossFunction import LossFunction
 from Estimator import Estimator
 from Estimator import GuessEstimator
 from Estimator import RankLib
-from Estimator import ScikitLearnEstimator
+from Estimator import ScitkitLearnKNeighborsRegressor
+from Estimator import ScitkitLearnRandomForestRegressor
 import time
 import copy
 
@@ -46,27 +47,41 @@ class BatchConfigs(BaseConfigs):
     def __init__(self):
         self.all_configs = []
 
+
+    @staticmethod
+    def create_batch_configs_for_parallelization(num_threads):
+        batch_configs = BatchConfigs()
+        configs = []
+        for n in num_threads:
+            estimator_config = EstimatorConfigs(RankLib(),
+                                                {
+                                                    'leaf': [2, 5, 10],
+                                                })
+            c = Configs(estimator_configs=estimator_config)
+            c.num_cv_processes = n
+            configs.append(c)
+        batch_configs.all_configs = configs
+        return batch_configs
+
     @staticmethod
     def create_batch_configs():
         batch_configs = BatchConfigs()
-        knr_configs = EstimatorConfigs(ScikitLearnEstimator(KNeighborsRegressor()),
+        knr_configs = EstimatorConfigs(ScitkitLearnKNeighborsRegressor(),
                                        {
                                            'n_neighbors': [1, 2, 3, 5, 9]
                                        })
-        rfr_configs = EstimatorConfigs(ScikitLearnEstimator(RandomForestRegressor(n_estimators=16)),
+        rfr_configs = EstimatorConfigs(ScitkitLearnRandomForestRegressor(),
                                        {
                                            'max_depth': [5, 10, 20, 40, 80, None]
                                        })
-        rl_configs = EstimatorConfigs(RankLib(make_score_binary_at_k=False,
-                                              k=5,
-                                              tree=200,
-                                              shrinkage=.1,
-                                              estop=50),
+        rl_configs = EstimatorConfigs(RankLib(),
                                       {
                                           'leaf': [2, 5, 10],
                                       })
         guess_configs = EstimatorConfigs(GuessEstimator(),
-                                         {'unused': [0]})
+                                         {
+                                             'unused': [0]
+                                         })
         estimator_configs = [guess_configs, knr_configs, rfr_configs, rl_configs]
 
         if imported_override:
@@ -119,7 +134,8 @@ class VisualizationConfigs(BaseConfigs):
 
 class Configs(BaseConfigs):
     def __init__(self, **kwargs):
-        self.estimator_configs = EstimatorConfigs(ScikitLearnEstimator(KNeighborsRegressor()), {'n_neighbors': [1, 2, 3, 7, 13, 21]})
+        self.estimator_configs = EstimatorConfigs(ScitkitLearnKNeighborsRegressor(),
+                                                   {'n_neighbors': [1, 2, 3, 7, 13, 21]})
         t = time.localtime()
         self.input_dim = 68
         self.date_string = str(t.tm_mon) + '-' + str(t.tm_mday) + '-' + str(t.tm_year)
@@ -152,9 +168,10 @@ class Configs(BaseConfigs):
             print('Couldn''t find OverrideConfigs.py')
 
         self.estimator_name = self.estimator_configs.estimator_short_name
-        #after the override so names can be generated from overridden parameters
-        self.save_results_file_name = self._generate_save_results_filename()
-        self.recall_results_file_name = self.save_results_file_name
+
+    @property
+    def save_results_file_name(self):
+        return self._generate_save_results_filename()
 
     def _get_params_to_show_in_filename(self):
         name_params = ['cv_loss_function', 'normalize_data', 'num_cv_processes']

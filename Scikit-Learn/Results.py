@@ -99,8 +99,7 @@ class TrainingSampleResult(object):
 
 class EstimatorResult(object):
 
-    def __init__(self, estimator_name):
-        self.name = estimator_name
+    def __init__(self):
         self.training_sample_dict = {}
 
     def add_training_results(self, training_size, fold_data, trial,
@@ -140,14 +139,10 @@ class EstimatorResult(object):
 class MainResult(object):
 
 
-    def __init__(self, estimator_name, path_to_store_results, file_name):
+    def __init__(self, configs):
         self.feature_importances = np.ndarray(0,dtype=float)
-        self.estimator_name = estimator_name
-
-        self.estimator_results = EstimatorResult(estimator_name)
-
-        self.filename = file_name
-        self.path = path_to_store_results
+        self.estimator_results = EstimatorResult()
+        self.configs = configs
 
     def generate_performance_results(self):
         data = self.data
@@ -165,7 +160,7 @@ class MainResult(object):
 
     #TODO: Move this outside of this class
     def save_data(self):
-        file_name = self.path + self.filename
+        file_name = self.configs.path_to_store_results + self.configs.save_results_file_name
         save_object(self, file_name)
 
 
