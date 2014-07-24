@@ -6,6 +6,7 @@ import numpy as np
 import pickle
 import os.path
 import copy
+from mpi4py import MPI
 from sklearn import cross_validation
 from sklearn.grid_search import ParameterGrid
 from sklearn.ensemble import RandomForestRegressor
@@ -60,7 +61,7 @@ class Learn():
     def run_grid_search(self):
         num_processes = self.configs.num_cv_processes
         use_cv_pool = self.configs.use_cv_pool
-        # pool = Pool(processes=num_processes)
+        pool = Pool(processes=num_processes)
         for training_size in self.configs.training_sizes:
             print 'training size: ', training_size
             for trial in range(self.configs.trials_per_size):
@@ -83,23 +84,20 @@ class Learn():
                 if len(param_grid) == 1 and False:
                     best_param_index = 0
                 else:
-                    # for train_target_indices, test_target_indices in kf:
-                    for kf_index in range(len(kf)):
-                        train_target_indices, test_target_indices = kf[kf_index]
-                        cv_train_targets = sampled_targets[train_target_indices]
-                        cv_test_targets = sampled_targets[test_target_indices]
-
-                        cv_train_x, cv_train_y, _, cv_train_target_ids = self.data.select_targets(cv_train_targets)
-                        cv_test_x, cv_test_y, _, cv_test_target_ids = self.data.select_targets(cv_test_targets)
-
-                        cv_train_x = normalizer.fit_transform(cv_train_x)
-                        cv_test_x = normalizer.transform(cv_test_x)
-
-                        #TODO: estimator_configs.estimator.set_params('n_cores': configs.n_cores )
-
+                    for param_index in range(len(param_grid)):
+                        params = param_grid[param_index]
                         func_params = []
-                        for param_index in range(len(param_grid)):
-                            params = param_grid[param_index]
+                        for kf_index in range(len(kf)):
+                            train_target_indices, test_target_indices = kf[kf_index]
+                            cv_train_targets = sampled_targets[train_target_indices]
+                            cv_test_targets = sampled_targets[test_target_indices]
+
+                            cv_train_x, cv_train_y, _, cv_train_target_ids = self.data.select_targets(cv_train_targets)
+                            cv_test_x, cv_test_y, _, cv_test_target_ids = self.data.select_targets(cv_test_targets)
+
+                            cv_train_x = normalizer.fit_transform(cv_train_x)
+                            cv_test_x = normalizer.transform(cv_test_x)
+
                             p = [self,
                                  cv_train_x, cv_train_y, cv_train_target_ids,
                                  cv_test_x, cv_test_y, cv_test_target_ids,
@@ -107,14 +105,14 @@ class Learn():
                             func_params.append(p)
 
                         if use_cv_pool:
-                            param_scores = pool.map(_train_and_test_with_params_args, func_params)
+                            kf_scores = pool.map(_train_and_test_with_params_args, func_params)
                         else:
-                            param_scores = []
-                            for param_index in range(len(param_grid)):
-                                params = func_params[param_index]
+                            kf_scores = []
+                            for params in func_params:
                                 score = _train_and_test_with_params_args(params)
-                                param_scores.append(score)
-                        cv_scores[kf_index] = param_scores
+                                kf_scores.append(score)
+                        for kf_index, kf_score in enumerate(kf_scores):
+                            cv_scores[kf_index][param_index] = kf_score
                     best_param_index = self._get_best_param_index(cv_scores)
                 best_params = param_grid[best_param_index]
                 best_estimator = copy.deepcopy(estimator_configs.estimator)
