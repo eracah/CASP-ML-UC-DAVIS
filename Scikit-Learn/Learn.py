@@ -51,7 +51,6 @@ class Learn():
         self.main_results = MainResult(configs)
         self.main_results.data = self.data
 
-
         if isinstance(self.estimator_configs.estimator, ScikitLearnEstimator) and \
                 isinstance(self.estimator_configs.estimator.skl_estimator, RandomForestRegressor):
             cores = {'n_jobs': self.configs.n_cores}
@@ -61,7 +60,7 @@ class Learn():
     def run_grid_search(self):
         num_processes = self.configs.num_cv_processes
         use_cv_pool = self.configs.use_cv_pool
-        pool = Pool(processes=num_processes)
+        # pool = Pool(processes=num_processes)
         for training_size in self.configs.training_sizes:
             print 'training size: ', training_size
             for trial in range(self.configs.trials_per_size):

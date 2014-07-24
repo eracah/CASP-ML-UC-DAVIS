@@ -3,6 +3,7 @@ from os import system
 try:
     from Learn import Learn
 except ImportError:
+    print 'ImportError'
     system('module load python matplotlib python-libs/2.7.5')
     system('module load python matplotlib')
     try:
@@ -15,6 +16,8 @@ import Configs.Configs as cfg
 import os.path
 import pickle
 import time
+import sys
+from mpi4py import MPI
 
 
 def create_main_result_file_name(configs):
@@ -33,12 +36,22 @@ def recall_main_results(configs):
 def learn_main_results(configs):
     learner = Learn(configs)
     main_results = learner.run_grid_search()
-    main_results.configs = configs
     main_results.save_data()
     return main_results
 
 
 if __name__ == "__main__":
+    comm = MPI.COMM_WORLD
+    size = comm.Get_size()
+    rank = comm.Get_rank()
+    print rank, 'of', size
+
+    data = rank
+    data = comm.gather(data, root=0)
+    if rank == 0:
+        print rank, ':', data
+    comm.Disconnect()
+    exit()
 
     t0 = time.time()
     batch_configs = cfg.BatchConfigs.create_batch_configs()
@@ -50,20 +63,22 @@ if __name__ == "__main__":
             print('Done Training!')
         else:
             print('Results already exist')
-    print "time:", time.time() - t0
-    viz_configs = cfg.VisualizationConfigs()
-    viz = Visualization(viz_configs)
-    for configs in batch_configs.all_configs:
-        main_results = recall_main_results(configs)
-        print('Done Loading Results!')
-        viz.add_to_learning_curve_plot(main_results)
 
-    viz.finish_learning_curve_plot()
-    #viz.plot_feature_importance_bar_chart()
-    # viz.plot_all()
+    if rank == 0:
+        print "time:", time.time() - t0
+        viz_configs = cfg.VisualizationConfigs()
+        viz = Visualization(viz_configs)
+        for configs in batch_configs.all_configs:
+            main_results = recall_main_results(configs)
+            print('Done Loading Results!')
+            viz.add_to_learning_curve_plot(main_results)
 
-    if viz_configs.show_plots:
-        viz.show()
+        viz.finish_learning_curve_plot()
+        #viz.plot_feature_importance_bar_chart()
+        # viz.plot_all()
+
+        if viz_configs.show_plots:
+            viz.show()
 
 
 
