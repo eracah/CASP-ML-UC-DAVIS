@@ -52,6 +52,11 @@ class Learn():
         self.main_results = MainResult(configs)
         self.main_results.data = self.data
 
+        if self.configs.normalize_data:
+            self.normalizer = StandardScaler()
+        else:
+            self.normalizer = StandardScaler(with_mean=False, with_std=False)
+
         if isinstance(self.estimator_configs.estimator, ScikitLearnEstimator) and \
                 isinstance(self.estimator_configs.estimator.skl_estimator, RandomForestRegressor):
             cores = {'n_jobs': self.configs.n_cores}
@@ -60,99 +65,17 @@ class Learn():
 
     def run_grid_search(self):
         num_processes = self.configs.num_cv_processes
-        use_cv_pool = self.configs.use_cv_pool
         pool = Pool(processes=num_processes)
         for training_size in self.configs.training_sizes:
             print 'training size: ', training_size
             for trial in range(self.configs.trials_per_size):
                 x_train, y_train, train_indices, train_targets = self.data.sample_train(training_size)
-                num_folds = self.configs.n_folds
-                cv_time_start = time.time()
-                estimator_configs = self.configs.estimator_configs
-                sampled_targets = np.asarray(list(set(train_targets)), dtype=int)
-                kf = list(cross_validation.KFold(len(sampled_targets), num_folds, shuffle=True))
-
-                params = estimator_configs.params
-                param_grid = list(ParameterGrid(params))
-                cv_scores = []
-                for i in range(len(kf)):
-                    cv_scores.append([0] * len(param_grid))
-
-                normalizer = StandardScaler()
-                if not self.configs.normalize_data:
-                    normalizer = StandardScaler(with_mean=False, with_std=False)
-                if len(param_grid) == 1 and False:
-                    best_param_index = 0
-                else:
-                    for param_index in range(len(param_grid)):
-                        params = param_grid[param_index]
-                        func_params = []
-                        for kf_index in range(len(kf)):
-                            train_target_indices, test_target_indices = kf[kf_index]
-                            cv_train_targets = sampled_targets[train_target_indices]
-                            cv_test_targets = sampled_targets[test_target_indices]
-
-                            cv_train_x, cv_train_y, _, cv_train_target_ids = self.data.select_targets(cv_train_targets)
-                            cv_test_x, cv_test_y, _, cv_test_target_ids = self.data.select_targets(cv_test_targets)
-
-                            cv_train_x = normalizer.fit_transform(cv_train_x)
-                            cv_test_x = normalizer.transform(cv_test_x)
-
-                            p = [self,
-                                 cv_train_x, cv_train_y, cv_train_target_ids,
-                                 cv_test_x, cv_test_y, cv_test_target_ids,
-                                 estimator_configs, params]
-                            func_params.append(p)
-
-                        if use_cv_pool:
-                            kf_scores = pool.map(_train_and_test_with_params_args, func_params)
-                        else:
-                            kf_scores = []
-                            for params in func_params:
-                                score = _train_and_test_with_params_args(params)
-                                kf_scores.append(score)
-                        for kf_index, kf_score in enumerate(kf_scores):
-                            cv_scores[kf_index][param_index] = kf_score
-                    best_param_index = self._get_best_param_index(cv_scores)
-                best_params = param_grid[best_param_index]
-                best_estimator = copy.deepcopy(estimator_configs.estimator)
-                best_estimator.set_params(**best_params)
-
-                cv_time = time.time() - cv_time_start
-
-                train_time_start = time.time()
-                #fit estimator with best parameters to training data
-                best_estimator.clear_cv_data()
-
-                x_train = normalizer.fit_transform(x_train)
-                best_estimator.fit(x_train, y_train, self.data.get_target_ids(train_indices))
-
-                if hasattr(best_estimator, 'feature_importances_'):
-                    feature_importances = best_estimator.feature_importances_
-                else:
-                    feature_importances = []
-                train_time = time.time() - train_time_start
-
+                best_estimator, best_params, cv_time = self._get_best_estimator_and_params(train_targets, pool)
+                best_estimator, train_time = self._train_data(best_estimator, x_train, y_train, train_indices)
                 best_estimator.predict(x_train, y_train, self.data.get_target_ids(train_indices))
-
-                print 'trial: ', trial+1, ' of ', self.configs.trials_per_size
-                print '\tbest parameter values: ', best_params
-                print '\ttrain_time: ', train_time
-                print '\tcv time: ', cv_time
-
-                fold_data = FoldData()
-                fold_data.training_size = training_size
-                fold_data.estimator = best_estimator
-
-                fold_data.train_inds = train_indices
-                fold_data.train_targets = train_targets
-                fold_data.train_time = train_time
-                fold_data.cv_time = cv_time
-
-                fold_data.normalizer = normalizer
-                fold_data.feature_importances = feature_importances
-
-                #add grid_search results to main results to be further processed
+                self._print_data(trial, best_params, train_time, cv_time)
+                fold_data = FoldData(training_size, best_estimator, train_indices, train_targets,
+                                     train_time, cv_time, self.normalizer)
                 self.main_results.add_estimator_results(fold_data,
                                                         trial,
                                                         self.configs.trials_per_size)
@@ -161,6 +84,74 @@ class Learn():
             self.main_results.save_data()
 
         return self.main_results
+
+
+    def _print_data(self, trial, best_params, train_time, cv_time):
+        print 'trial: ', trial+1, ' of ', self.configs.trials_per_size
+        print '\tbest parameter values: ', best_params
+        print '\ttrain_time: ', train_time
+        print '\tcv time: ', cv_time
+
+    def _train_data(self, best_estimator, x_train, y_train, train_indices):
+        train_time_start = time.time()
+        best_estimator.clear_cv_data()
+        x_train = self.normalizer.fit_transform(x_train)
+        best_estimator.fit(x_train, y_train, self.data.get_target_ids(train_indices))
+        train_time = time.time() - train_time_start
+        return best_estimator, train_time
+
+    def _get_best_estimator_and_params(self,train_targets, pool):
+        cv_time_start = time.time()
+        param_grid = list(ParameterGrid(self.configs.estimator_configs.params))
+        sampled_targets = np.asarray(list(set(train_targets)), dtype=int)
+        kf = list(cross_validation.KFold(len(sampled_targets), self.configs.n_folds, shuffle=True))
+        cv_scores = []
+        for i in range(len(kf)):
+            cv_scores.append([0] * len(param_grid))
+        if len(param_grid) == 1 and False:
+            best_param_index = 0
+        else:
+            best_param_index = self._cross_validate(param_grid, kf, sampled_targets, cv_scores, pool)
+
+        best_params = param_grid[best_param_index]
+        best_estimator = copy.deepcopy(self.configs.estimator_configs.estimator)
+        best_estimator.set_params(**best_params)
+        cv_time = time.time() - cv_time_start
+        return best_estimator, best_params, cv_time
+
+    def _cross_validate(self, param_grid, kf, sampled_targets, cv_scores, pool):
+            for param_index in range(len(param_grid)):
+                params = param_grid[param_index]
+                func_params = []
+                for kf_index in range(len(kf)):
+                    train_target_indices, test_target_indices = kf[kf_index]
+                    cv_train_targets = sampled_targets[train_target_indices]
+                    cv_test_targets = sampled_targets[test_target_indices]
+
+                    cv_train_x, cv_train_y, _, cv_train_target_ids = self.data.select_targets(cv_train_targets)
+                    cv_test_x, cv_test_y, _, cv_test_target_ids = self.data.select_targets(cv_test_targets)
+
+                    cv_train_x = self.normalizer.fit_transform(cv_train_x)
+                    cv_test_x = self.normalizer.transform(cv_test_x)
+
+                    p = [self,
+                         cv_train_x, cv_train_y, cv_train_target_ids,
+                         cv_test_x, cv_test_y, cv_test_target_ids,
+                         self.configs.estimator_configs, params]
+                    func_params.append(p)
+
+                if self.configs.use_cv_pool:
+                    kf_scores = pool.map(_train_and_test_with_params_args, func_params)
+                else:
+                    kf_scores = []
+                    for params in func_params:
+                        score = _train_and_test_with_params_args(params)
+                        kf_scores.append(score)
+                for kf_index, kf_score in enumerate(kf_scores):
+                    cv_scores[kf_index][param_index] = kf_score
+            best_param_index = self._get_best_param_index(cv_scores)
+            return best_param_index
+
 
     def _train_and_test_with_params(self,
                                     train_x, train_y, train_target_ids,

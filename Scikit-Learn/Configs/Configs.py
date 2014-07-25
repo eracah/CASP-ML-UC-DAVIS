@@ -149,6 +149,7 @@ class Configs(BaseConfigs):
         self.trials_per_size = 5
         self.n_cores = 2
         self.we_learn_the_data = True
+        self.generate_plots = True
         self.show_plots = True
         self.load_target_data = False
         self.save_the_results = True

@@ -15,7 +15,20 @@ from sklearn.preprocessing import StandardScaler
 
 
 class FoldData(object):
-    pass
+    def __init__(self,training_size, best_estimator, train_indices, train_targets, 
+                 train_time, cv_time, normalizer):
+        self.training_size = training_size
+        self.estimator = best_estimator
+        self.train_inds = train_indices
+        self.train_targets = train_targets
+        self.train_time = train_time
+        self.cv_time = cv_time
+        self.normalizer = normalizer
+        if hasattr(best_estimator, 'feature_importances_'):
+            self.feature_importances = self.best_estimator.feature_importances_
+        else:
+            self.feature_importances = []
+
 
 class TrainingSampleResult(object):
 

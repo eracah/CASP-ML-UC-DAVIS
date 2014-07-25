@@ -1,6 +1,13 @@
 __author__ = 'Evan Racah'
 
-from matplotlib import pyplot as plt
+from os import system
+
+try:
+    from matplotlib import pyplot as plt
+except ImportError:
+    system('module load python matplotlib')
+    from matplotlib import pyplot as plt
+
 import math
 import numpy as np
 from LossFunction import LossFunction
