@@ -20,12 +20,17 @@ if general_configs.generate_plots:
 import os.path
 import pickle
 import time
-from mpi4py import MPI
+try:
+    from mpi4py import MPI
+except ImportError:
+    system('module load mpi4py')
+    from mpi4py import MPI
 
 class Main(object):
-    def __init__(self, cfg, rank):
+    def __init__(self, cfg, rank, size):
         # batch_configs = cfg.BatchConfigs.create_batch_configs_for_parallelization([1, 2, 4])
         #for each estimator's conifgs
+        self.num_proc = size
         self.processor_id = rank
         self.configs_module = cfg
         self.batch_configs = cfg.BatchConfigs.create_batch_configs()
@@ -50,12 +55,13 @@ class Main(object):
         return main_results
 
     def generate_results(self):
-        for configs in enumerate(self.batch_configs.all_configs):
-            if configs.we_learn_the_data or not self.main_results_exist(configs):
-                self.learn_main_results(configs)
-                print('Done Training!')
-            else:
-                print('Results already exist')
+        for index, configs in enumerate(self.batch_configs.all_configs):
+            if self.processor_id == (index % self.num_proc):
+                if configs.we_learn_the_data or not self.main_results_exist(configs):
+                    self.learn_main_results(configs)
+                    print('Done Training!')
+                else:
+                    print('Results already exist')
 
         if configs.generate_plots:
             self.visualize()
@@ -84,21 +90,21 @@ if __name__ == "__main__":
     rank = comm.Get_rank()
     print rank, 'of', size
 
-    data = rank
-    data = comm.gather(data, root=0)
-    if rank == 0:
-        print rank, ':', data
-    comm.Disconnect()
-    exit()
+    # data = rank
+    # data = comm.gather(data, root=0)
+    # if rank == 0:
+    #     print rank, ':', data
+    # comm.Disconnect()
+    # exit()
 
     t0 = time.time()
-    main = Main(Configs, rank)
+    main = Main(Configs, rank, size)
     main.generate_results()
 
     if rank == 0:
         print "time:", time.time() - t0
-        if general_configs.generate_plots:
-            main.visualize()
+    if general_configs.generate_plots:
+        main.visualize()
 
 
 
