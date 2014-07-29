@@ -6,7 +6,7 @@ import numpy as np
 import pickle
 import os.path
 import copy
-from mpi4py import MPI
+# from mpi4py import MPI
 from sklearn import cross_validation
 from sklearn.grid_search import ParameterGrid
 from sklearn.ensemble import RandomForestRegressor
@@ -64,7 +64,7 @@ class Learn():
 
 
     def run_grid_search(self):
-        num_processes = self.configs.num_cv_processes
+        num_processes = 1
         pool = Pool(processes=num_processes)
         for training_size in self.configs.training_sizes:
             print 'training size: ', training_size

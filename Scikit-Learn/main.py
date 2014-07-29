@@ -5,11 +5,7 @@ try:
 except ImportError:
     print 'ImportError'
     system('module load python matplotlib python-libs/2.7.5')
-    try:
-        from Learn import Learn
-    except ImportError:
-        from Learn import Learn
-
+    from Learn import Learn
 
 import Configs.Configs as Configs
 
@@ -20,11 +16,12 @@ if general_configs.generate_plots:
 import os.path
 import pickle
 import time
-try:
-    from mpi4py import MPI
-except ImportError:
-    system('module load mpi4py')
-    from mpi4py import MPI
+# try:
+#     from mpi4py import MPI
+# except ImportError:
+#     system('module load mpi4py')
+#     from mpi4py import MPI
+
 
 class Main(object):
     def __init__(self, cfg, rank, size):
@@ -82,29 +79,23 @@ class Main(object):
             viz.show()
 
 
-
-if __name__ == "__main__":
-    general_configs = Configs.Configs()
-    comm = MPI.COMM_WORLD
-    size = comm.Get_size()
-    rank = comm.Get_rank()
-    print rank, 'of', size
-
-    # data = rank
-    # data = comm.gather(data, root=0)
-    # if rank == 0:
-    #     print rank, ':', data
-    # comm.Disconnect()
-    # exit()
+def run_main(args):
+    job_id = args[0]
+    num_jobs = args[1]
 
     t0 = time.time()
-    main = Main(Configs, rank, size)
+    main = Main(Configs, job_id, num_jobs)
     main.generate_results()
 
-    if rank == 0:
+    if job_id == 0:
         print "time:", time.time() - t0
+
+    general_configs = Configs.Configs()
     if general_configs.generate_plots:
         main.visualize()
+
+if __name__ == "__main__":
+    run_main([0, 1])
 
 
 
