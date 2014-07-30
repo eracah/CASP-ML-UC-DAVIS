@@ -6,6 +6,7 @@ import numpy as np
 import pickle
 import os.path
 import copy
+import random
 # from mpi4py import MPI
 from sklearn import cross_validation
 from sklearn.grid_search import ParameterGrid
@@ -16,7 +17,7 @@ from LossFunction import LossFunction
 from Estimator import Estimator, ScikitLearnEstimator
 import HelperFunctions
 import functools
-from pyspark import SparkContext
+# from pyspark import SparkContext
 
 from sklearn.preprocessing import StandardScaler
 
@@ -27,19 +28,20 @@ from Data import Data
 def _train_and_test_with_params_args(args):
     return _train_and_test_with_params(*args)
 
-def _train_and_test_with_params(learn,
+def _train_and_test_with_params(configs,
                                 train_x, train_y, train_target_ids,
                                 test_x, test_y, test_target_ids,
                                 estimator_configs,
                                 estimator_params):
         estimator = copy.deepcopy(estimator_configs.estimator)
+        estimator.file_id = random.randint(0,2**64)
         estimator.set_params(**estimator_params)
         #TODO: Do we want this?
         # estimator.set_cv_data(test_x, test_y, test_target_ids)
         estimator.fit(train_x, train_y, train_target_ids)
         cv_test_pred = estimator.predict(test_x, test_y, test_target_ids)
         score = LossFunction.compute_loss_function(cv_test_pred, test_y,
-                                                   test_target_ids, learn.configs.cv_loss_function)
+                                                   test_target_ids, configs.cv_loss_function)
         return score
 
 class Learn():
@@ -133,7 +135,7 @@ class Learn():
                     cv_train_x = self.normalizer.fit_transform(cv_train_x)
                     cv_test_x = self.normalizer.transform(cv_test_x)
 
-                    p = [self,
+                    p = [self.configs,
                          cv_train_x, cv_train_y, cv_train_target_ids,
                          cv_test_x, cv_test_y, cv_test_target_ids,
                          self.configs.estimator_configs, params]
@@ -144,8 +146,8 @@ class Learn():
                         score = _train_and_test_with_params_args(params)
                         kf_scores.append(score)
                 else:
-                    dist_params = self.spark_context.parallelize(params)
-                    dist_scores = dist_params.map(_train_and_test_with_params)
+                    dist_func_params = self.spark_context.parallelize(func_params)
+                    dist_scores = dist_func_params.map(_train_and_test_with_params_args)
                     all_scores = dist_scores.collect()
                     for score in all_scores:
                         kf_scores.append(score)
@@ -154,21 +156,6 @@ class Learn():
                     cv_scores[kf_index][param_index] = kf_score
             best_param_index = self._get_best_param_index(cv_scores)
             return best_param_index
-
-
-    def _train_and_test_with_params(self,
-                                    train_x, train_y, train_target_ids,
-                                    test_x, test_y, test_target_ids,
-                                    estimator_configs,
-                                    estimator_params):
-        estimator = copy.deepcopy(estimator_configs.estimator)
-        estimator.set_params(**estimator_params)
-        estimator.set_cv_data(test_x, test_y, test_target_ids)
-        estimator.fit(train_x, train_y, train_target_ids)
-        cv_test_pred = estimator.predict(test_x, test_y, test_target_ids)
-        score = LossFunction.compute_loss_function(cv_test_pred, test_y,
-                                                   test_target_ids, self.configs.cv_loss_function)
-        return score
 
     def _get_best_param_index(self, all_scores):
         mean_scores = []

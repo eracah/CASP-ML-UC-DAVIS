@@ -16,6 +16,7 @@ if general_configs.generate_plots:
 import os.path
 import pickle
 import time
+from Estimator import RankLib
 # try:
 #     from mpi4py import MPI
 # except ImportError:
@@ -78,7 +79,7 @@ class Main(object):
 
 
 def run_main(num_jobs, spark_context):
-
+    RankLib.delete_ranklib_data_files()
     t0 = time.time()
     main = Main(Configs, num_jobs, spark_context)
     main.generate_results()
