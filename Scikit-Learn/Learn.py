@@ -16,6 +16,7 @@ from LossFunction import LossFunction
 from Estimator import Estimator, ScikitLearnEstimator
 import HelperFunctions
 import functools
+from pyspark import SparkContext
 
 from sklearn.preprocessing import StandardScaler
 
@@ -42,9 +43,9 @@ def _train_and_test_with_params(learn,
         return score
 
 class Learn():
-    def __init__(self, configs):
+    def __init__(self, configs, spark_context):
         self.configs = configs
-
+        self.spark_context = spark_context
         self.data = self._get_data(self.configs)
         self.estimator_configs = configs.estimator_configs
         self.estimator_name = configs.estimator_name
@@ -64,13 +65,11 @@ class Learn():
 
 
     def run_grid_search(self):
-        num_processes = 1
-        pool = Pool(processes=num_processes)
         for training_size in self.configs.training_sizes:
             print 'training size: ', training_size
             for trial in range(self.configs.trials_per_size):
                 x_train, y_train, train_indices, train_targets = self.data.sample_train(training_size)
-                best_estimator, best_params, cv_time = self._get_best_estimator_and_params(train_targets, pool)
+                best_estimator, best_params, cv_time = self._get_best_estimator_and_params(train_targets)
                 best_estimator, train_time = self._train_data(best_estimator, x_train, y_train, train_indices)
                 best_estimator.predict(x_train, y_train, self.data.get_target_ids(train_indices))
                 self._print_data(trial, best_params, train_time, cv_time)
@@ -100,7 +99,7 @@ class Learn():
         train_time = time.time() - train_time_start
         return best_estimator, train_time
 
-    def _get_best_estimator_and_params(self,train_targets, pool):
+    def _get_best_estimator_and_params(self,train_targets):
         cv_time_start = time.time()
         param_grid = list(ParameterGrid(self.configs.estimator_configs.params))
         sampled_targets = np.asarray(list(set(train_targets)), dtype=int)
@@ -111,7 +110,7 @@ class Learn():
         if len(param_grid) == 1 and False:
             best_param_index = 0
         else:
-            best_param_index = self._cross_validate(param_grid, kf, sampled_targets, cv_scores, pool)
+            best_param_index = self._cross_validate(param_grid, kf, sampled_targets, cv_scores)
 
         best_params = param_grid[best_param_index]
         best_estimator = copy.deepcopy(self.configs.estimator_configs.estimator)
@@ -119,7 +118,7 @@ class Learn():
         cv_time = time.time() - cv_time_start
         return best_estimator, best_params, cv_time
 
-    def _cross_validate(self, param_grid, kf, sampled_targets, cv_scores, pool):
+    def _cross_validate(self, param_grid, kf, sampled_targets, cv_scores):
             for param_index in range(len(param_grid)):
                 params = param_grid[param_index]
                 func_params = []
@@ -139,14 +138,18 @@ class Learn():
                          cv_test_x, cv_test_y, cv_test_target_ids,
                          self.configs.estimator_configs, params]
                     func_params.append(p)
-
-                if self.configs.use_cv_pool:
-                    kf_scores = pool.map(_train_and_test_with_params_args, func_params)
-                else:
-                    kf_scores = []
+                kf_scores = []
+                if self.spark_context == None:
                     for params in func_params:
                         score = _train_and_test_with_params_args(params)
                         kf_scores.append(score)
+                else:
+                    dist_params = self.spark_context.parallelize(params)
+                    dist_scores = dist_params.map(_train_and_test_with_params)
+                    all_scores = dist_scores.collect()
+                    for score in all_scores:
+                        kf_scores.append(score)
+
                 for kf_index, kf_score in enumerate(kf_scores):
                     cv_scores[kf_index][param_index] = kf_score
             best_param_index = self._get_best_param_index(cv_scores)

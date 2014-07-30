@@ -24,11 +24,11 @@ import time
 
 
 class Main(object):
-    def __init__(self, cfg, rank, size):
+    def __init__(self, cfg, num_jobs, spark_context):
         # batch_configs = cfg.BatchConfigs.create_batch_configs_for_parallelization([1, 2, 4])
         #for each estimator's conifgs
-        self.num_proc = size
-        self.processor_id = rank
+        self.num_proc = num_jobs
+        self.spark_context = spark_context
         self.configs_module = cfg
         self.batch_configs = cfg.BatchConfigs.create_batch_configs()
 
@@ -39,26 +39,24 @@ class Main(object):
         file_name = self.create_main_result_file_name(configs)
         return os.path.isfile(file_name)
 
-
     def recall_main_results(self, configs):
         file_name = self.create_main_result_file_name(configs)
         with open(file_name, 'rb') as f:
             return pickle.load(f)
 
-    def learn_main_results(self,configs):
-        learner = Learn(configs)
+    def learn_main_results(self, configs):
+        learner = Learn(configs, self.spark_context)
         main_results = learner.run_grid_search()
         main_results.save_data()
         return main_results
 
     def generate_results(self):
         for index, configs in enumerate(self.batch_configs.all_configs):
-            if self.processor_id == (index % self.num_proc):
-                if configs.we_learn_the_data or not self.main_results_exist(configs):
-                    self.learn_main_results(configs)
-                    print('Done Training!')
-                else:
-                    print('Results already exist')
+            if configs.we_learn_the_data or not self.main_results_exist(configs):
+                self.learn_main_results(configs)
+                print('Done Training!')
+            else:
+                print('Results already exist')
 
         if configs.generate_plots:
             self.visualize()
@@ -79,23 +77,20 @@ class Main(object):
             viz.show()
 
 
-def run_main(args):
-    job_id = args[0]
-    num_jobs = args[1]
+def run_main(num_jobs, spark_context):
 
     t0 = time.time()
-    main = Main(Configs, job_id, num_jobs)
+    main = Main(Configs, num_jobs, spark_context)
     main.generate_results()
 
-    if job_id == 0:
-        print "time:", time.time() - t0
-
-    general_configs = Configs.Configs()
-    if general_configs.generate_plots:
-        main.visualize()
+    print "time:", time.time() - t0
+    if num_jobs == 1:
+        general_configs = Configs.Configs()
+        if general_configs.generate_plots:
+            main.visualize()
 
 if __name__ == "__main__":
-    run_main([0, 1])
+    run_main(1, None)
 
 
 
