@@ -144,8 +144,9 @@ classdef RawData
         function [fieldName] = getFieldNames(obj)
             fieldName = obj.targetsCellArray{1}.fields(:,obj.startFeatureIndex:obj.endFeatureIndex)
         end
+        
             
-        function [aTargetsData, aTargetsLabel] = getTargetData(obj,targetIndex)
+        function [aTargetsData, aTargetsLabel] = getUnlabeledTargetData(obj,targetIndex)
             aTargetsData = obj.targetsCellArray{targetIndex}.values(:,obj.startFeatureIndex:obj.endFeatureIndex);
             
             %get zscore of the data
@@ -155,6 +156,18 @@ classdef RawData
             aTargetsLabel = obj.targetsCellArray{targetIndex}.values(:,obj.outputIndex);
         end
         
+        function [aTargetsName, aTargetsFields, aTargetsData] = getLabelledTargetData(obj,targetIndex)
+            theTarget = obj.targetsCellArray{targetIndex};
+            aTargetsName = theTarget.targetName;
+            aTargetsFields = theTarget.fields;
+            aTargetsData = theTarget.values;
+            
+            %get zscore of the data
+            %aTargetsData = zscore(aTargetsData);
+            
+            %no zscore of the labels
+          
+        end
          
         function [theDataObject]= addDataToDataObject(obj,theDataObject)
             count = 1;

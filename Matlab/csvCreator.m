@@ -15,10 +15,23 @@ rdat = RawData(pathToData,ColumnsUsed,fractionTest);
 
 %loop through and grab each matrix of data and save to its own csv file
 for targetIndex = 1:rdat.totalTargetsInDataset
-    
-%aTargets Label put as last column
-[aTargetsData aTargetsLabel] = rdat.getTargetData(targetIndex);
-fileName = sprintf('%d.csv',targetIndex);
-path = './../Scikit-Learn/Targets/';
-csvwrite([path fileName],[aTargetsData aTargetsLabel]);
+    [aTargetsName, aTargetsFields, aTargetsData] = rdat.getLabelledTargetData(targetIndex);
+    if ((aTargetsName(end-2:end) > 643) | (aTargetsName(1) == 'R'))
+        %aTargets Label put as last column
+        fileName = sprintf('%s.csv',aTargetsName);
+        fields = 'target'
+        for i =1:length(aTargetsFields)
+            fields = sprintf('%s,%s',fields,aTargetsFields{i}); 
+        end
+        fields(end+1) = ',';
+        
+        
+        fprintf('%s\n',fields)
+        path = './Targets/';
+        fid = fopen('hey.csv','w');
+        fwrite(fid,fields);
+        %csvwrite('hey.csv',aTargetsData);
+        break;
+
+    end
 end
