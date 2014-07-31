@@ -38,6 +38,7 @@ class Visualization(object):
     def _set_results(self, main_result_obj):
         self.results_obj = main_result_obj
         if hasattr(self.configs,'viz_loss_function'):
+            #TODO: PLA put this setting of results loss function into configs
             self.results_obj.configs.results_loss_function = self.configs.viz_loss_function
             self.results_obj.generate_performance_results()
 
