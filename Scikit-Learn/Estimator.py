@@ -5,6 +5,7 @@ import numpy as np
 import random
 import copy
 import multiprocessing
+import os
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
 from RankLib.RankLib import save_in_letor_format
@@ -12,6 +13,7 @@ from RankLib.RankLib import load_letor_scores
 from RankLib.RankLib import run_ranking
 from RankLib.RankLib import RankLibConfigs
 from HelperFunctions import check_input
+
 
 import Learn
 
@@ -107,9 +109,8 @@ model_file_name = 'RankLib/Data/letor_model_'
 score_file_name = 'RankLib/Data/letor_score_'
 cv_file_name = 'RankLib/Data/letor_cv_'
 
-def get_unique_file_name(file_name):
-    current = multiprocessing.current_process()
-    return file_name + current.name + '.txt'
+def get_unique_file_name(file_name, id):
+    return file_name + str(id) + '.txt'
 
 class RankLib(Estimator):
     _ranker_opt_name_dict = {
@@ -148,6 +149,15 @@ class RankLib(Estimator):
         self.rl_configs.tree = tree
         self.rl_configs.shrinkage = shrinkage
         self.rl_configs.estop = estop
+        self.file_id = random.randint(0,2**64)
+
+
+    @staticmethod
+    def delete_ranklib_data_files():
+        path = 'RankLib/Data/'
+        for file_name in os.listdir(path):
+            if file_name.endswith(".txt"):
+                os.remove(path + file_name)
 
     def set_params(self, **kwargs):
         for k, v in kwargs.items():
@@ -158,8 +168,8 @@ class RankLib(Estimator):
         check_input(X, Y, target_ids)
         if self.rl_configs.make_score_binary_at_k:
             Y = Learn.Data.make_score_0_1(Y, target_ids, self.rl_configs.k)
-        train_file = get_unique_file_name(train_file_name)
-        model_file = get_unique_file_name(model_file_name)
+        train_file = get_unique_file_name(train_file_name, self.file_id)
+        model_file = get_unique_file_name(model_file_name, self.file_id)
         save_in_letor_format(X, Y, target_ids, train_file)
         rl_configs = copy.deepcopy(self.rl_configs)
         rl_configs.train_file_name = train_file
@@ -169,7 +179,7 @@ class RankLib(Estimator):
         run_ranking(rl_configs)
 
     def set_cv_data(self, X, Y, target_ids):
-        self.cv_file_name = get_unique_file_name(cv_file_name)
+        self.cv_file_name = get_unique_file_name(cv_file_name, self.file_id)
         check_input(X, Y, target_ids)
         if self.rl_configs.make_score_binary_at_k:
             Y = Learn.Data.make_score_0_1(Y, target_ids, self.rl_configs.k)
@@ -181,9 +191,9 @@ class RankLib(Estimator):
             del self.cv_file_name
 
     def predict(self, X, Y, target_ids):
-        model_file = get_unique_file_name(model_file_name)
-        test_file = get_unique_file_name(test_file_name)
-        score_file = get_unique_file_name(score_file_name)
+        model_file = get_unique_file_name(model_file_name, self.file_id)
+        test_file = get_unique_file_name(test_file_name, self.file_id)
+        score_file = get_unique_file_name(score_file_name, self.file_id)
         check_input(X, Y, target_ids)
         if self.rl_configs.make_score_binary_at_k:
             Y = Learn.Data.make_score_0_1(Y, target_ids, self.rl_configs.k)

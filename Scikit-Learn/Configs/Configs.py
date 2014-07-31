@@ -157,8 +157,6 @@ class Configs(BaseConfigs):
         self.params_to_vary = []
         self.use_ranks_for_y = False
         self.normalize_data = True
-        self.num_cv_processes = 1
-        self.use_cv_pool = self.num_cv_processes > 1
         #Try to apply local Configs
 
         self.update_configs(**kwargs)
@@ -175,7 +173,7 @@ class Configs(BaseConfigs):
         return self._generate_save_results_filename()
 
     def _get_params_to_show_in_filename(self):
-        name_params = ['cv_loss_function', 'normalize_data', 'num_cv_processes']
+        name_params = ['cv_loss_function', 'normalize_data']
         return name_params
 
     def _generate_save_results_filename(self):
