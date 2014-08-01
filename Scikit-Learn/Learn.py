@@ -1,6 +1,5 @@
 __author__ = 'Evan and Aubrey'
 
-
 import time
 import numpy as np
 import pickle
@@ -25,24 +24,44 @@ from multiprocessing import Pool
 
 from Data import Data
 
+
+def _train_and_test_with_params_args_spark(args):
+    cv_train_targets, cv_test_targets = args[0:2]
+    broadcast_configs, broadcast_params, broadcast_data = args[2:]
+
+    cv_train_x, cv_train_y, _, cv_train_target_ids = broadcast_data.value.select_targets(cv_train_targets)
+    cv_test_x, cv_test_y, _, cv_test_target_ids = broadcast_data.value.select_targets(cv_test_targets)
+
+    cv_normalizer =  StandardScaler()
+    cv_train_x = cv_normalizer.fit_transform(cv_train_x)
+    cv_test_x = cv_normalizer.transform(cv_test_x)
+    new_args = [broadcast_configs.value,
+                cv_train_x, cv_train_y, cv_train_target_ids,
+                cv_test_x, cv_test_y, cv_test_target_ids,
+                broadcast_params.value]
+    return _train_and_test_with_params_args(new_args)
+
+
 def _train_and_test_with_params_args(args):
     return _train_and_test_with_params(*args)
+
 
 def _train_and_test_with_params(configs,
                                 train_x, train_y, train_target_ids,
                                 test_x, test_y, test_target_ids,
-                                estimator_configs,
                                 estimator_params):
-        estimator = copy.deepcopy(estimator_configs.estimator)
-        estimator.file_id = random.randint(0,2**64)
-        estimator.set_params(**estimator_params)
-        #TODO: Do we want this?
-        # estimator.set_cv_data(test_x, test_y, test_target_ids)
-        estimator.fit(train_x, train_y, train_target_ids)
-        cv_test_pred = estimator.predict(test_x, test_y, test_target_ids)
-        score = LossFunction.compute_loss_function(cv_test_pred, test_y,
-                                                   test_target_ids, configs.cv_loss_function)
-        return score
+    estimator_configs = configs.estimator_configs
+    estimator = copy.deepcopy(estimator_configs.estimator)
+    estimator.file_id = random.randint(0, 2 ** 64)
+    estimator.set_params(**estimator_params)
+    # TODO: Do we want this?
+    # estimator.set_cv_data(test_x, test_y, test_target_ids)
+    estimator.fit(train_x, train_y, train_target_ids)
+    cv_test_pred = estimator.predict(test_x, test_y, test_target_ids)
+    score = LossFunction.compute_loss_function(cv_test_pred, test_y,
+                                               test_target_ids, configs.cv_loss_function)
+    return score
+
 
 class Learn():
     def __init__(self, configs, spark_context):
@@ -88,7 +107,7 @@ class Learn():
 
 
     def _print_data(self, trial, best_params, train_time, cv_time):
-        print 'trial: ', trial+1, ' of ', self.configs.trials_per_size
+        print 'trial: ', trial + 1, ' of ', self.configs.trials_per_size
         print '\tbest parameter values: ', best_params
         print '\ttrain_time: ', train_time
         print '\tcv time: ', cv_time
@@ -101,7 +120,7 @@ class Learn():
         train_time = time.time() - train_time_start
         return best_estimator, train_time
 
-    def _get_best_estimator_and_params(self,train_targets):
+    def _get_best_estimator_and_params(self, train_targets):
         cv_time_start = time.time()
         param_grid = list(ParameterGrid(self.configs.estimator_configs.params))
         sampled_targets = np.asarray(list(set(train_targets)), dtype=int)
@@ -121,46 +140,61 @@ class Learn():
         return best_estimator, best_params, cv_time
 
     def _cross_validate(self, param_grid, kf, sampled_targets, cv_scores):
-            for param_index in range(len(param_grid)):
-                params = param_grid[param_index]
-                func_params = []
-                for kf_index in range(len(kf)):
-                    train_target_indices, test_target_indices = kf[kf_index]
-                    cv_train_targets = sampled_targets[train_target_indices]
-                    cv_test_targets = sampled_targets[test_target_indices]
+        use_broadcast_variables = True
+        if self.spark_context != None and use_broadcast_variables:
+            broadcast_configs = self.spark_context.broadcast(self.configs)
+            broadcast_data = self.spark_context.broadcast(self.data)
+        for param_index in range(len(param_grid)):
+            params = param_grid[param_index]
+            func_params = []
+            if self.spark_context != None and use_broadcast_variables:
+                broadcast_params = self.spark_context.broadcast(params)
 
-                    cv_train_x, cv_train_y, _, cv_train_target_ids = self.data.select_targets(cv_train_targets)
-                    cv_test_x, cv_test_y, _, cv_test_target_ids = self.data.select_targets(cv_test_targets)
+            for kf_index in range(len(kf)):
+                train_target_indices, test_target_indices = kf[kf_index]
+                cv_train_targets = sampled_targets[train_target_indices]
+                cv_test_targets = sampled_targets[test_target_indices]
 
-                    cv_train_x = self.normalizer.fit_transform(cv_train_x)
-                    cv_test_x = self.normalizer.transform(cv_test_x)
+                cv_train_x, cv_train_y, _, cv_train_target_ids = self.data.select_targets(cv_train_targets)
+                cv_test_x, cv_test_y, _, cv_test_target_ids = self.data.select_targets(cv_test_targets)
 
+                cv_train_x = self.normalizer.fit_transform(cv_train_x)
+                cv_test_x = self.normalizer.transform(cv_test_x)
+
+                if self.spark_context == None or not use_broadcast_variables:
                     p = [self.configs,
                          cv_train_x, cv_train_y, cv_train_target_ids,
                          cv_test_x, cv_test_y, cv_test_target_ids,
-                         self.configs.estimator_configs, params]
-                    func_params.append(p)
-                kf_scores = []
-                if self.spark_context == None:
-                    for params in func_params:
-                        score = _train_and_test_with_params_args(params)
-                        kf_scores.append(score)
+                         params]
                 else:
-                    dist_func_params = self.spark_context.parallelize(func_params)
+                    p = [cv_train_targets,
+                         cv_test_targets,
+                         broadcast_configs, broadcast_params, broadcast_data]
+                func_params.append(p)
+            kf_scores = []
+            if self.spark_context == None:
+                for params in func_params:
+                    score = _train_and_test_with_params_args(params)
+                    kf_scores.append(score)
+            else:
+                dist_func_params = self.spark_context.parallelize(func_params)
+                if use_broadcast_variables:
+                    dist_scores = dist_func_params.map(_train_and_test_with_params_args_spark)
+                else:
                     dist_scores = dist_func_params.map(_train_and_test_with_params_args)
-                    all_scores = dist_scores.collect()
-                    for score in all_scores:
-                        kf_scores.append(score)
+                all_scores = dist_scores.collect()
+                for score in all_scores:
+                    kf_scores.append(score)
 
-                for kf_index, kf_score in enumerate(kf_scores):
-                    cv_scores[kf_index][param_index] = kf_score
-            best_param_index = self._get_best_param_index(cv_scores)
-            return best_param_index
+            for kf_index, kf_score in enumerate(kf_scores):
+                cv_scores[kf_index][param_index] = kf_score
+        best_param_index = self._get_best_param_index(cv_scores)
+        return best_param_index
 
     def _get_best_param_index(self, all_scores):
         mean_scores = []
         for index in range(len(all_scores[0])):
-            param_scores = [fold_scores[index] for fold_scores in all_scores ]
+            param_scores = [fold_scores[index] for fold_scores in all_scores]
             mean_scores.append(np.asarray(param_scores).mean())
         return np.asarray(mean_scores).argmin()
 

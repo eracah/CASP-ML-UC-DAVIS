@@ -14,9 +14,11 @@ if __name__ == "__main__":
         try:
             spark_conf = SparkConf()
             spark_conf.set("spark.executor.memory", "8g")
-            spark_conf.set("spark.eventLog.enable", "false")
+            spark_conf.set("spark.eventLog.enable", "True")
             spark_conf.set("spark.logConf", "true")
-            spark_conf.set("spark.default.parallelism", "2")
+            spark_conf.set("spark.default.parallelism", "5")
+            spark_conf.set("spark.task.maxFailure", "4")
+            # spark_conf.set("spark.storage.memoryFraction", ".2")
             sc = SparkContext(conf=spark_conf, appName="CASP-ML")
         except:
             print "sc doesn't exist AND cannot create new SparkContext!"

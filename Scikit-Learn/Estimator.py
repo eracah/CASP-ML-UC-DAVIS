@@ -15,9 +15,6 @@ from RankLib.RankLib import RankLibConfigs
 from HelperFunctions import check_input
 
 
-import Learn
-
-
 class Estimator(object):
     __metaclass__ = abc.ABCMeta
 

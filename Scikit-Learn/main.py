@@ -1,3 +1,5 @@
+import Configs
+
 __author__ = 'Evan Racah'
 from os import system
 try:
@@ -6,8 +8,6 @@ except ImportError:
     print 'ImportError'
     system('module load python matplotlib python-libs/2.7.5')
     from Learn import Learn
-
-import Configs.Configs as Configs
 
 general_configs = Configs.Configs()
 if general_configs.generate_plots:

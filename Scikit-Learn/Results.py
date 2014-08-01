@@ -1,17 +1,11 @@
+from Configs import Configs
+
 __author__ = 'Evan Racah'
 
-from sklearn import metrics
-
-import pickle
 import numpy as np
-import os
 import time
-from math import ceil
-from Configs.Configs import Configs
 from LossFunction import LossFunction
 from HelperFunctions import save_object
-from Estimator import Estimator
-from sklearn.preprocessing import StandardScaler
 
 
 class FoldData(object):
