@@ -154,6 +154,7 @@ class Configs(BaseConfigs):
         self.load_target_data = False
         self.save_the_results = True
         self.cv_loss_function = LossFunction(LossFunction.PRECISION)
+        self.results_loss_function = LossFunction(LossFunction.PRECISION)
         self.params_to_vary = []
         self.use_ranks_for_y = False
         self.normalize_data = True
