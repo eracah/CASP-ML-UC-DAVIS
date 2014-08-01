@@ -140,6 +140,7 @@ class Configs(BaseConfigs):
         self.input_dim = 68
         self.date_string = str(t.tm_mon) + '-' + str(t.tm_mday) + '-' + str(t.tm_year)
         self.path_to_targets = './Targets/'
+        self.target_zip_file_name = 'targets.zip'
         self.path_to_store_results = './Results/Data/'
         self.target_data_file_name = 'SavedData/data.p'
         self.test_size = 0.2

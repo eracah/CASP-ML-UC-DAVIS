@@ -5,6 +5,7 @@ import numpy as np
 import pickle
 from sklearn.cross_validation import train_test_split
 import random
+import os
 
 # Version number to prevent loading out of data data
 DATA_VERSION = 1
@@ -66,6 +67,12 @@ class Data(object):
     def _load_data(self, configs):
           #get array from csv files
         target_files = glob.glob(configs.path_to_targets + '*.csv')
+        if len(target_files) == 0:
+            print 'need to unzip first'
+            zipCommand = 'unzip ' + configs.path_to_targets + '/' + configs.target_zip_file_name + ' -d ' + configs.path_to_targets
+            os.system(zipCommand)
+            target_files = glob.glob(configs.path_to_targets + '*.csv')
+
         for target_id_counter, target_file in enumerate(target_files):
             target = np.genfromtxt(target_file, delimiter=',')
             num_models = target.shape[0]
