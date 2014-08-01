@@ -11,15 +11,18 @@ fractionTest = 0.2;
 
 %instantiate dat object
 rdat = RawData(pathToData,ColumnsUsed,fractionTest);
-
+labelFlag = true;
+path = './SciTargets/';
+targetStart = 0;
 
 %loop through and grab each matrix of data and save to its own csv file
 for targetIndex = 1:rdat.totalTargetsInDataset
-    [aTargetsName, aTargetsFields, aTargetsData, aTargetsFileNames] = rdat.getLabelledTargetData(targetIndex);
+    [aTargetsName, aTargetsFields, aTargetsData, aTargetsFileNames, aTargetsLabel] = rdat.getTargetData(targetIndex,labelFlag);
+    disp(aTargetsLabel)
     firstLetter = aTargetsName(1);
     targetNumber = str2num(aTargetsName(3:end-3));
     
-    if (targetNumber > 643) | firstLetter == 'R'
+    if (targetNumber > targetStart) %| firstLetter == 'R'
         %aTargets Label put as last column
         fileName = sprintf('%s.csv',aTargetsName);
         fields = 'target,pdbFile';
@@ -30,17 +33,21 @@ for targetIndex = 1:rdat.totalTargetsInDataset
         
         
         %fprintf('%s\n',fields)
-        path = './Targets/';
+        
         totalPath = [path fileName];
-        fid = fopen(totalPath,'w');
-        fwrite(fid,fields);
-        fprintf(fid,'\n');
-        fclose(fid);
-        for j = 1:length(aTargetsData(:,1))
-            fid = fopen(totalPath,'a');
-            fprintf(fid,'%s,%s,',aTargetsName,aTargetsFileNames{j});
+        if ~labelFlag
+            fid = fopen(totalPath,'w');
+            fwrite(fid,fields);
+            fprintf(fid,'\n');
             fclose(fid);
-            dlmwrite(totalPath,aTargetsData(j,:), '-append');
+        end
+        for j = 1:length(aTargetsData(:,1))
+            if ~labelFlag
+                fid = fopen(totalPath,'a');
+                fprintf(fid,'%s,%s,',aTargetsName,aTargetsFileNames{j});
+                fclose(fid);
+            end
+            dlmwrite(totalPath,[aTargetsData(j,:) aTargetsLabel(j)], '-append');
         end
         
 

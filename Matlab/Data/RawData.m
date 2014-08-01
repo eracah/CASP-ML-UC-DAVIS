@@ -145,27 +145,21 @@ classdef RawData
             fieldName = obj.targetsCellArray{1}.fields(:,obj.startFeatureIndex:obj.endFeatureIndex)
         end
         
-            
-        function [aTargetsData, aTargetsLabel] = getUnlabeledTargetData(obj,targetIndex)
-            aTargetsData = obj.targetsCellArray{targetIndex}.values(:,obj.startFeatureIndex:obj.endFeatureIndex);
-            
-            %get zscore of the data
-            %aTargetsData = zscore(aTargetsData);
-            
-            %no zscore of the labels
-            aTargetsLabel = obj.targetsCellArray{targetIndex}.values(:,obj.outputIndex);
-        end
         
-        function [aTargetsName, aTargetsFields, aTargetsData, aTargetsFileNames] = getLabelledTargetData(obj,targetIndex)
+        function [aTargetsName, aTargetsFields, aTargetsData, aTargetsFileNames, aTargetsLabel] = getTargetData(obj,targetIndex,notLabelled)
             theTarget = obj.targetsCellArray{targetIndex};
             aTargetsName = theTarget.targetName;
-            aTargetsFields = theTarget.fields;
-            aTargetsData = theTarget.values;
             aTargetsFileNames = theTarget.fileNames;
-            %get zscore of the data
-            %aTargetsData = zscore(aTargetsData);
-            
-            %no zscore of the labels
+            if notLabelled
+                aTargetsData = theTarget.values(:,obj.startFeatureIndex:obj.endFeatureIndex);
+                aTargetsFields = theTarget.fields(:,obj.startFeatureIndex:obj.endFeatureIndex);
+                aTargetsLabel = obj.targetsCellArray{targetIndex}.values(:,obj.outputIndex);
+            else
+                aTargetsFields = theTarget.fields;
+                aTargetsData = theTarget.values;
+                
+                aTargetsLabel = [];
+            end
           
         end
          
